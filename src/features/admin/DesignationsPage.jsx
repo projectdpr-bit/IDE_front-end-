@@ -5,7 +5,7 @@ import apiClient from "@/lib/axios";
 import { useForm } from "@/hooks/useForm";
 import { validators } from "@/utils/validation";
 import { GET_ROLES_API, ADD_ROLE_API, EDIT_ROLE_API } from "@/utils/ApiHelper";
-import { Award, Search, Plus, Loader2, ShieldCheck, RefreshCw, AlertCircle, Edit3, Trash2 } from "lucide-react";
+import { Award, Search, Plus, Loader2, RefreshCw, AlertCircle, Edit3, Trash2 } from "lucide-react";
 
 export default function DesignationsPage() {
   const [roles, setRoles] = useState([]);

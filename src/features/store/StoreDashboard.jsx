@@ -1,9 +1,33 @@
+import { useState, useEffect } from "react";
 import DashboardLayout from "@/layouts/DashboardLayout";
 import { useAuthStore } from "@/store/useAuthStore";
-import { Store, PackageCheck, ArrowDownLeft, ArrowUpRight } from "lucide-react";
-
+import { Store, PackageCheck, ArrowDownLeft, ArrowUpRight, Loader2 } from "lucide-react";
+import apiClient from "@/lib/axios";
+import { GET_STORE_PROJECTS_API } from "@/utils/ApiHelper";
 export default function StoreDashboard() {
   const { user } = useAuthStore();
+  const [projects, setProjects] = useState([]);
+  const [loadingProjects, setLoadingProjects] = useState(true);
+
+  const fetchProjects = async () => {
+    try {
+      setLoadingProjects(true);
+      const res = await apiClient.get(GET_STORE_PROJECTS_API);
+      if (res.data?.success && Array.isArray(res.data.data)) {
+        setProjects(res.data.data);
+      } else {
+        setProjects([]);
+      }
+    } catch (err) {
+      console.error("Error fetching store projects:", err);
+    } finally {
+      setLoadingProjects(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchProjects();
+  }, []);
 
   return (
     <DashboardLayout>
@@ -41,14 +65,81 @@ export default function StoreDashboard() {
             </div>
           </div>
 
-          <div className="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm flex items-center justify-between">
+          <div className="bg-white rounded-[var(--radius-xl)] border border-[var(--color-layout-border)] p-[var(--card-padding)] shadow-sm flex items-center justify-between">
             <div>
-              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Today's Outward (Site)</p>
-              <h3 className="text-2xl font-bold text-slate-800 mt-1">8 Dispatches</h3>
+              <p className="text-[var(--text-xs)] font-semibold text-slate-500 uppercase tracking-wider">Today's Outward (Site)</p>
+              <h3 className="text-[var(--text-2xl)] font-bold text-slate-800 mt-[var(--space-1)]">8 Dispatches</h3>
             </div>
-            <div className="p-3.5 rounded-xl border text-primary-top bg-orange-50 border-orange-100">
-              <ArrowUpRight className="w-6 h-6" />
+            <div className="p-[var(--space-3)] rounded-[var(--radius-xl)] border text-[var(--color-primary-top)] bg-orange-50 border-orange-100">
+              <ArrowUpRight className="w-[var(--icon-lg)] h-[var(--icon-lg)]" />
             </div>
+          </div>
+        </div>
+
+        {/* Active Projects Table Area */}
+        <div className="bg-white rounded-[var(--radius-xl)] border border-[var(--color-layout-border)] p-[var(--card-padding)] shadow-sm flex flex-col gap-[var(--space-4)]">
+          <div className="flex items-center justify-between">
+            <h2 className="text-[var(--text-base)] font-bold text-slate-800">Active Projects</h2>
+          </div>
+
+          <div className="flex-1 overflow-auto scrollbar-thin scrollbar-thumb-slate-300 scrollbar-track-transparent rounded-[var(--radius-xl)] border border-[var(--color-layout-border)] bg-white">
+            <table className="w-full min-w-[600px] border-collapse text-[var(--text-sm)]">
+              <thead>
+                <tr>
+                  <th className="sticky top-0 z-10 px-[var(--table-cell-px)] py-[var(--table-cell-py)] text-[var(--text-xs)] font-semibold text-slate-500 uppercase tracking-wider bg-slate-50/80 backdrop-blur-sm border-b border-[var(--color-layout-border)] whitespace-nowrap text-left">
+                    Project Code
+                  </th>
+                  <th className="sticky top-0 z-10 px-[var(--table-cell-px)] py-[var(--table-cell-py)] text-[var(--text-xs)] font-semibold text-slate-500 uppercase tracking-wider bg-slate-50/80 backdrop-blur-sm border-b border-[var(--color-layout-border)] whitespace-nowrap text-left">
+                    Project Name
+                  </th>
+                  <th className="sticky top-0 z-10 px-[var(--table-cell-px)] py-[var(--table-cell-py)] text-[var(--text-xs)] font-semibold text-slate-500 uppercase tracking-wider bg-slate-50/80 backdrop-blur-sm border-b border-[var(--color-layout-border)] whitespace-nowrap text-left">
+                    Start Date
+                  </th>
+                  <th className="sticky top-0 z-10 px-[var(--table-cell-px)] py-[var(--table-cell-py)] text-[var(--text-xs)] font-semibold text-slate-500 uppercase tracking-wider bg-slate-50/80 backdrop-blur-sm border-b border-[var(--color-layout-border)] whitespace-nowrap text-left">
+                    Status
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {loadingProjects ? (
+                  <tr>
+                    <td colSpan={4} className="text-center py-[var(--space-10)] text-slate-500">
+                      <Loader2 className="w-[var(--icon-lg)] h-[var(--icon-lg)] animate-spin mx-auto text-[var(--color-primary-top)]" />
+                      <p className="mt-[var(--space-2)] text-[var(--text-sm)]">Loading projects...</p>
+                    </td>
+                  </tr>
+                ) : projects.length > 0 ? (
+                  projects.map((project) => (
+                    <tr key={project.project_id} className="hover:bg-slate-50/50 transition-colors">
+                      <td className="px-[var(--table-cell-px)] py-[var(--table-cell-py)] text-[var(--text-sm)] text-slate-700 border-b border-[var(--color-layout-border)] whitespace-nowrap">
+                        <span className="font-medium text-[var(--color-primary-top)]">{project.project_code}</span>
+                      </td>
+                      <td className="px-[var(--table-cell-px)] py-[var(--table-cell-py)] text-[var(--text-sm)] text-slate-700 border-b border-[var(--color-layout-border)] whitespace-nowrap">
+                        {project.project_name}
+                      </td>
+                      <td className="px-[var(--table-cell-px)] py-[var(--table-cell-py)] text-[var(--text-sm)] text-slate-700 border-b border-[var(--color-layout-border)] whitespace-nowrap">
+                        {project.start_date ? new Date(project.start_date).toLocaleDateString() : "N/A"}
+                      </td>
+                      <td className="px-[var(--table-cell-px)] py-[var(--table-cell-py)] text-[var(--text-sm)] text-slate-700 border-b border-[var(--color-layout-border)] whitespace-nowrap">
+                        <span className={`inline-flex items-center px-[var(--space-3)] py-[var(--space-1)] rounded-[var(--radius-full)] text-[var(--text-2xs)] font-semibold uppercase tracking-wide ${
+                          project.status?.toLowerCase() === 'active' 
+                            ? 'bg-green-100 text-green-700' 
+                            : 'bg-slate-100 text-slate-700'
+                        }`}>
+                          {project.status || "Unknown"}
+                        </span>
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={4} className="text-center py-[var(--space-10)] text-[var(--text-sm)] text-slate-500">
+                      No active projects found.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
           </div>
         </div>
       </div>

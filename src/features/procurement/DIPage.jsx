@@ -97,6 +97,30 @@ export default function DIPage() {
       prev.map((item, i) => (i === idx ? { ...item, [field]: value } : item))
     );
 
+  // ── Helpers to get item quantities from API response keys
+  const getItemRemainingQty = (poItem) => {
+    if (!poItem) return 0;
+    if (poItem.remaining_quantity !== undefined && poItem.remaining_quantity !== null) {
+      return parseFloat(poItem.remaining_quantity) || 0;
+    }
+    if (poItem.remaining_qty !== undefined && poItem.remaining_qty !== null) {
+      return parseFloat(poItem.remaining_qty) || 0;
+    }
+    const total = parseFloat(poItem.quantity ?? poItem.po_quantity ?? poItem.po_qty) || 0;
+    const dispatched = parseFloat(poItem.dispatched_quantity ?? poItem.dispatched_qty) || 0;
+    return Math.max(0, total - dispatched);
+  };
+
+  const getItemTotalQty = (poItem) => {
+    if (!poItem) return 0;
+    return parseFloat(poItem.po_quantity ?? poItem.po_qty ?? poItem.quantity) || 0;
+  };
+
+  const getItemDispatchedQty = (poItem) => {
+    if (!poItem) return 0;
+    return parseFloat(poItem.dispatched_quantity ?? poItem.dispatched_qty) || 0;
+  };
+
   // ─────────────────────────────────────────────────────────
   // Submit
   // ─────────────────────────────────────────────────────────
@@ -112,7 +136,7 @@ export default function DIPage() {
       if (!item.po_item_id) err[`item_${i}_material`] = "Material required";
       else {
         const poItem = poMaterials.find(pi => String(pi.po_item_id) === String(item.po_item_id));
-        const maxQty = poItem ? parseFloat(poItem.quantity) : 0;
+        const maxQty = getItemRemainingQty(poItem);
         const typedQty = parseFloat(item.quantity) || 0;
         
         const usedInOtherRows = items.reduce((acc, curr, currIdx) => {
@@ -126,7 +150,7 @@ export default function DIPage() {
         if (!item.quantity || typedQty <= 0) {
           err[`item_${i}_quantity`] = "Valid quantity required";
         } else if (typedQty > remainingAvailable) {
-          err[`item_${i}_quantity`] = `Max allowed is ${remainingAvailable}`;
+          err[`item_${i}_quantity`] = `Max allowed is ${remainingAvailable} (Remaining available)`;
         }
       }
     });
@@ -342,7 +366,7 @@ export default function DIPage() {
         submitText={submitting ? "Creating..." : "Create DI"}
         onSubmit={handleFormSubmit}
         loading={submitting}
-        maxWidth="max-w-2xl"
+        maxWidth="max-w-3xl"
       >
         <div className="space-y-6">
           
@@ -351,13 +375,17 @@ export default function DIPage() {
               <label className={labelCls}>Purchase Order *</label>
               <select
                 value={poId}
-                onChange={(e) => setPoId(e.target.value)}
+                onChange={(e) => {
+                  setPoId(e.target.value);
+                  setItems([{ ...EMPTY_ITEM }]);
+                  setFormErrors({});
+                }}
                 className={inputCls(formErrors.poId)}
               >
                 <option value="">— Select PO —</option>
                 {pos.map((p) => (
                   <option key={p.po_id} value={p.po_id}>
-                    {p.po_number}
+                    {p.po_number} {p.vendor_name ? `(${p.vendor_name})` : ""}
                   </option>
                 ))}
               </select>
@@ -426,32 +454,38 @@ export default function DIPage() {
 
                   <p className="text-xs font-semibold text-slate-400">Item {idx + 1}</p>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div className="sm:col-span-2">
                       <label className={labelCls}>Material *</label>
                       <select
                         value={item.po_item_id}
                         onChange={(e) => updateItem(idx, "po_item_id", e.target.value)}
-                        className={inputCls(formErrors[`item_${idx}_material`])}
+                        className={`${inputCls(formErrors[`item_${idx}_material`])} truncate`}
                       >
                         <option value="">— Select Material —</option>
                         {availableMaterials.map((m) => {
-                          const maxQty = parseFloat(m.quantity) || 0;
+                          const maxRemaining = getItemRemainingQty(m);
+                          const totalQty = getItemTotalQty(m);
                           const usedInOtherRows = items.reduce((acc, curr, currIdx) => {
                             if (currIdx !== idx && String(curr.po_item_id) === String(m.po_item_id)) {
                               return acc + (parseFloat(curr.quantity) || 0);
                             }
                             return acc;
                           }, 0);
-                          const remainingAvailable = maxQty - usedInOtherRows;
+                          const remainingAvailable = maxRemaining - usedInOtherRows;
+                          const isSelected = String(item.po_item_id) === String(m.po_item_id);
 
-                          if (remainingAvailable <= 0 && String(item.po_item_id) !== String(m.po_item_id)) {
-                            return null;
-                          }
+                          const matName = m.material_name || m.item_description || "Item";
+                          const matCode = m.material_code ? `${m.material_code} - ` : "";
+                          const unitStr = m.unit ? ` (${m.unit})` : "";
 
                           return (
-                            <option key={m.po_item_id} value={m.po_item_id}>
-                              ID: {m.po_item_id} - {m.material_code ? `${m.material_code} - ` : ""}{m.material_name || m.item_description}
+                            <option
+                              key={m.po_item_id}
+                              value={m.po_item_id}
+                              disabled={remainingAvailable <= 0 && !isSelected}
+                            >
+                              {matCode}{matName} — (Rem: {remainingAvailable}{unitStr} / Total: {totalQty}{unitStr})
                             </option>
                           );
                         })}
@@ -485,21 +519,39 @@ export default function DIPage() {
                         const poItem = (selectedPO.items || []).find(pi => String(pi.po_item_id) === String(item.po_item_id));
                         if (!poItem) return null;
 
-                        const maxQty = parseFloat(poItem.quantity) || 0;
+                        const totalQty = getItemTotalQty(poItem);
+                        const dispatchedQty = getItemDispatchedQty(poItem);
+                        const maxRemaining = getItemRemainingQty(poItem);
+
                         const usedInOtherRows = items.reduce((acc, curr, currIdx) => {
                           if (currIdx !== idx && String(curr.po_item_id) === String(item.po_item_id)) {
                             return acc + (parseFloat(curr.quantity) || 0);
                           }
                           return acc;
                         }, 0);
-                        const remainingAvailable = maxQty - usedInOtherRows;
-                        const typedQty = parseFloat(item.quantity) || 0;
-                        const remaining = remainingAvailable - typedQty;
 
-                        if (remaining < 0) {
-                          return <p className="text-red-500 text-xs mt-1 font-semibold">Exceeds PO limit by {Math.abs(remaining)}</p>;
+                        const remainingAvailable = maxRemaining - usedInOtherRows;
+                        const typedQty = parseFloat(item.quantity) || 0;
+                        const remainingAfterInput = remainingAvailable - typedQty;
+                        const unitStr = poItem.unit ? ` ${poItem.unit}` : "";
+
+                        if (remainingAfterInput < 0) {
+                          return (
+                            <p className="text-red-500 text-xs mt-1 font-semibold">
+                              Exceeds PO limit by {Math.abs(remainingAfterInput)}{unitStr} (Max Available: {remainingAvailable}{unitStr})
+                            </p>
+                          );
                         } else {
-                          return <p className="text-emerald-600 text-xs mt-1 font-semibold">Remaining: {remaining}</p>;
+                          return (
+                            <div className="mt-1 text-xs space-y-0.5 font-medium">
+                              <p className="text-emerald-600 font-semibold">
+                                Remaining Available: {remainingAvailable}{unitStr}
+                              </p>
+                              <p className="text-slate-400 text-2xs">
+                                Total PO Qty: {totalQty}{unitStr} | Dispatched: {dispatchedQty}{unitStr}
+                              </p>
+                            </div>
+                          );
                         }
                       })()}
                     </div>

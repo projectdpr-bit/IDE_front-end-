@@ -12,3 +12,4 @@ export * from "./api/auth.api";
 export * from "./api/admin.api";
 export * from "./api/hr.api";
 export * from "./api/procurement.api";
+export * from "./api/store.api";

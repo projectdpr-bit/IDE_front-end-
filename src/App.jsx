@@ -23,6 +23,7 @@ import EmployeeDashboard from "@/features/hrms/EmployeeDashboard";
 
 import ClientDashboard from "@/features/client/ClientDashboard";
 import StoreDashboard from "@/features/store/StoreDashboard";
+import StorePOPage from "@/features/store/StorePOPage";
 import InventoryInwardPage from "@/features/store/InventoryInwardPage";
 import InventoryOutwardPage from "@/features/store/InventoryOutwardPage";
 import StockAgingPage from "@/features/store/StockAgingPage";
@@ -76,6 +77,7 @@ export default function App() {
 
         {/* 5. Store & Procurement Feature Routes */}
         <Route path="/store/dashboard" element={<ProtectedRoute><StoreDashboard /></ProtectedRoute>} />
+        <Route path="/store/pos" element={<ProtectedRoute><StorePOPage /></ProtectedRoute>} />
         <Route path="/store/inward" element={<ProtectedRoute><InventoryInwardPage /></ProtectedRoute>} />
         <Route path="/store/outward" element={<ProtectedRoute><InventoryOutwardPage /></ProtectedRoute>} />
         <Route path="/store/stock-aging" element={<ProtectedRoute><StockAgingPage /></ProtectedRoute>} />

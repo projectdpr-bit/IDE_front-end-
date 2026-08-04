@@ -103,6 +103,11 @@ export default function ProjectsPage() {
   // Form State for Site Creation
   const [submittingSite, setSubmittingSite] = useState(false);
   const [siteError, setSiteError] = useState("");
+  
+  const [subDivisions, setSubDivisions] = useState([
+    { sub_division_name: "", feeders: [{ feeder_name: "", locations: [""] }] }
+  ]);
+
   const {
     values: siteData,
     errors: siteErrors,
@@ -114,18 +119,12 @@ export default function ProjectsPage() {
     site_name: "",
     project_id: "",
     store_id: "",
-    location: "",
     site_status: "active",
-    sub_division: "",
-    feeder: "",
   }, {
     site_name: [validators.required],
     project_id: [validators.required],
     store_id: [validators.required],
-    location: [validators.required],
     site_status: [validators.required],
-    sub_division: [validators.required],
-    feeder: [validators.required],
   });
 
   // Fetch Projects and Clients via GET APIs
@@ -307,11 +306,11 @@ export default function ProjectsPage() {
       site_name: "",
       project_id: "",
       store_id: "",
-      location: "",
       site_status: "active",
-      sub_division: "",
-      feeder: "",
     });
+    setSubDivisions([
+      { sub_division_name: "", feeders: [{ feeder_name: "", locations: [""] }] }
+    ]);
     setSiteErrors({});
     setShowAddSiteDrawer(true);
   };
@@ -326,10 +325,14 @@ export default function ProjectsPage() {
         site_name: siteData.site_name,
         project_id: parseInt(siteData.project_id, 10),
         store_id: parseInt(siteData.store_id, 10),
-        location: siteData.location,
         site_status: siteData.site_status,
-        sub_division: siteData.sub_division,
-        feeder: siteData.feeder,
+        sub_divisions: subDivisions.map(sd => ({
+          sub_division_name: sd.sub_division_name,
+          feeders: sd.feeders.map(f => ({
+            feeder_name: f.feeder_name,
+            locations: f.locations.filter(l => l.trim() !== "")
+          }))
+        }))
       };
       const response = await apiClient.post(ADD_SITE_API, payload);
       if (response.data?.success) {
@@ -344,6 +347,56 @@ export default function ProjectsPage() {
     } finally {
       setSubmittingSite(false);
     }
+  };
+
+  const handleAddSubDivision = () => {
+    setSubDivisions([...subDivisions, { sub_division_name: "", feeders: [{ feeder_name: "", locations: [""] }] }]);
+  };
+
+  const handleRemoveSubDivision = (index) => {
+    setSubDivisions(subDivisions.filter((_, i) => i !== index));
+  };
+
+  const handleSubDivisionChange = (index, value) => {
+    const newSd = [...subDivisions];
+    newSd[index].sub_division_name = value;
+    setSubDivisions(newSd);
+  };
+
+  const handleAddFeeder = (sdIndex) => {
+    const newSd = [...subDivisions];
+    newSd[sdIndex].feeders.push({ feeder_name: "", locations: [""] });
+    setSubDivisions(newSd);
+  };
+
+  const handleRemoveFeeder = (sdIndex, fIndex) => {
+    const newSd = [...subDivisions];
+    newSd[sdIndex].feeders = newSd[sdIndex].feeders.filter((_, i) => i !== fIndex);
+    setSubDivisions(newSd);
+  };
+
+  const handleFeederChange = (sdIndex, fIndex, value) => {
+    const newSd = [...subDivisions];
+    newSd[sdIndex].feeders[fIndex].feeder_name = value;
+    setSubDivisions(newSd);
+  };
+
+  const handleAddLocation = (sdIndex, fIndex) => {
+    const newSd = [...subDivisions];
+    newSd[sdIndex].feeders[fIndex].locations.push("");
+    setSubDivisions(newSd);
+  };
+
+  const handleRemoveLocation = (sdIndex, fIndex, lIndex) => {
+    const newSd = [...subDivisions];
+    newSd[sdIndex].feeders[fIndex].locations = newSd[sdIndex].feeders[fIndex].locations.filter((_, i) => i !== lIndex);
+    setSubDivisions(newSd);
+  };
+
+  const handleLocationChange = (sdIndex, fIndex, lIndex, value) => {
+    const newSd = [...subDivisions];
+    newSd[sdIndex].feeders[fIndex].locations[lIndex] = value;
+    setSubDivisions(newSd);
   };
 
   const handleOpenAssignDrawer = (project) => {
@@ -1175,49 +1228,107 @@ export default function ProjectsPage() {
           {siteErrors.store_id && <p className="text-red-500 text-xs mt-1">{siteErrors.store_id}</p>}
         </div>
 
-        <div>
-          <label className="font-bold text-slate-700 block mb-1.5">Location</label>
-          <input
-            type="text"
-            name="location"
-            value={siteData.location}
-            onChange={handleSiteChange}
-            placeholder="e.g. Kudasan, Gandhinagar, Gujarat"
-            className={`w-full px-3.5 py-2.5 bg-slate-50 border rounded-xl focus:outline-none font-medium text-slate-900 transition-all ${
-              siteErrors.location ? "border-red-500 focus:border-red-500" : "border-slate-200 focus:border-[#DC2604]"
-            }`}
-          />
-          {siteErrors.location && <p className="text-red-500 text-xs mt-1">{siteErrors.location}</p>}
-        </div>
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <label className="font-bold text-slate-700 block">Sub Divisions</label>
+            <button
+              type="button"
+              onClick={handleAddSubDivision}
+              className="text-xs text-[#DC2604] hover:text-primary-bottom font-bold flex items-center gap-1 cursor-pointer"
+            >
+              <Plus className="w-3.5 h-3.5" /> Add Sub Division
+            </button>
+          </div>
+          {subDivisions.map((sd, sdIndex) => (
+            <div key={sdIndex} className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-4 relative">
+              <div className="flex items-center justify-between gap-2">
+                <input
+                  type="text"
+                  value={sd.sub_division_name}
+                  onChange={(e) => handleSubDivisionChange(sdIndex, e.target.value)}
+                  placeholder={`Sub Division Name ${sdIndex + 1}`}
+                  className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl focus:outline-none font-medium text-slate-900 focus:border-[#DC2604]"
+                />
+                {subDivisions.length > 1 && (
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveSubDivision(sdIndex)}
+                    className="p-2.5 text-rose-500 hover:bg-rose-50 rounded-xl border border-transparent hover:border-rose-100 transition-colors cursor-pointer"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
 
-        <div>
-          <label className="font-bold text-slate-700 block mb-1.5">Sub Division</label>
-          <input
-            type="text"
-            name="sub_division"
-            value={siteData.sub_division}
-            onChange={handleSiteChange}
-            placeholder="e.g. Subdivision 01"
-            className={`w-full px-3.5 py-2.5 bg-slate-50 border rounded-xl focus:outline-none font-medium text-slate-900 transition-all ${
-              siteErrors.sub_division ? "border-red-500 focus:border-red-500" : "border-slate-200 focus:border-[#DC2604]"
-            }`}
-          />
-          {siteErrors.sub_division && <p className="text-red-500 text-xs mt-1">{siteErrors.sub_division}</p>}
-        </div>
+              <div className="space-y-3 pl-2 border-l-2 border-slate-200 ml-2">
+                <div className="flex items-center justify-between">
+                  <label className="font-semibold text-slate-600 text-xs">Feeders</label>
+                  <button
+                    type="button"
+                    onClick={() => handleAddFeeder(sdIndex)}
+                    className="text-xs text-sky-600 hover:text-sky-700 font-bold flex items-center gap-1 cursor-pointer"
+                  >
+                    <Plus className="w-3.5 h-3.5" /> Add Feeder
+                  </button>
+                </div>
+                {sd.feeders.map((f, fIndex) => (
+                  <div key={fIndex} className="p-3 bg-white border border-slate-200 rounded-lg space-y-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <input
+                        type="text"
+                        value={f.feeder_name}
+                        onChange={(e) => handleFeederChange(sdIndex, fIndex, e.target.value)}
+                        placeholder={`Feeder Name ${fIndex + 1}`}
+                        className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none text-sm font-medium text-slate-900 focus:border-sky-500"
+                      />
+                      {sd.feeders.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveFeeder(sdIndex, fIndex)}
+                          className="p-2 text-rose-500 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
 
-        <div>
-          <label className="font-bold text-slate-700 block mb-1.5">Feeder</label>
-          <input
-            type="text"
-            name="feeder"
-            value={siteData.feeder}
-            onChange={handleSiteChange}
-            placeholder="e.g. 11KV Town Feeder 1"
-            className={`w-full px-3.5 py-2.5 bg-slate-50 border rounded-xl focus:outline-none font-medium text-slate-900 transition-all ${
-              siteErrors.feeder ? "border-red-500 focus:border-red-500" : "border-slate-200 focus:border-[#DC2604]"
-            }`}
-          />
-          {siteErrors.feeder && <p className="text-red-500 text-xs mt-1">{siteErrors.feeder}</p>}
+                    <div className="space-y-2 pl-2 border-l border-slate-100 ml-1">
+                      <div className="flex items-center justify-between">
+                        <label className="text-2xs font-semibold text-slate-500 uppercase tracking-wide">Locations</label>
+                        <button
+                          type="button"
+                          onClick={() => handleAddLocation(sdIndex, fIndex)}
+                          className="text-2xs text-emerald-600 hover:text-emerald-700 font-bold flex items-center gap-1 cursor-pointer"
+                        >
+                          <Plus className="w-3 h-3" /> Add Location
+                        </button>
+                      </div>
+                      {f.locations.map((loc, lIndex) => (
+                        <div key={lIndex} className="flex items-center gap-2">
+                          <input
+                            type="text"
+                            value={loc}
+                            onChange={(e) => handleLocationChange(sdIndex, fIndex, lIndex, e.target.value)}
+                            placeholder="e.g. 0 - 66 KV BAVLA SS"
+                            className="flex-1 px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-md focus:outline-none text-xs font-medium text-slate-900 focus:border-emerald-500"
+                          />
+                          {f.locations.length > 1 && (
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveLocation(sdIndex, fIndex, lIndex)}
+                              className="p-1.5 text-rose-500 hover:bg-rose-50 rounded-md transition-colors cursor-pointer"
+                            >
+                              <Trash2 className="w-3 h-3" />
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
         </div>
 
         <div>

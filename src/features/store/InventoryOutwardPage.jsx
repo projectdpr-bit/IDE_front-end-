@@ -1,143 +1,174 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import DashboardLayout from "@/layouts/DashboardLayout";
-import { ArrowUpRight, Plus, Search, Loader2, Eye, FileText } from "lucide-react";
+import { ArrowUpRight, Search, Loader2 } from "lucide-react";
+import apiClient from "@/lib/axios";
+import { STORE_STOCK_OUTWARD_API } from "@/utils/ApiHelper";
 
 export default function InventoryOutwardPage() {
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
-  const [outwardLogs, setOutwardLogs] = useState([
-    {
-      id: "INV-OUT-001",
-      date: "2023-10-18",
-      project: "Project Alpha",
-      site: "Site A - Feeder 1",
-      engineer: "John Doe",
-      total_items: 8,
-      status: "dispatched",
-    },
-    {
-      id: "INV-OUT-002",
-      date: "2023-10-19",
-      project: "Project Beta",
-      site: "Site B - Feeder 3",
-      engineer: "Jane Smith",
-      total_items: 3,
-      status: "draft",
+  const [outwardLogs, setOutwardLogs] = useState([]);
+
+  const fetchOutwardLogs = async () => {
+    try {
+      setLoading(true);
+      const res = await apiClient.get(STORE_STOCK_OUTWARD_API);
+      if (res.data?.success && Array.isArray(res.data.data)) {
+        setOutwardLogs(res.data.data);
+      } else {
+        setOutwardLogs([]);
+      }
+    } catch (err) {
+      console.error("Error fetching outward logs:", err);
+    } finally {
+      setLoading(false);
     }
-  ]);
+  };
+
+  useEffect(() => {
+    fetchOutwardLogs();
+  }, []);
 
   const filteredLogs = outwardLogs.filter((log) =>
-    log.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    log.project.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    log.engineer.toLowerCase().includes(searchQuery.toLowerCase())
+    (log.outward_number || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (log.store_name || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (log.site_name || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (log.issued_to_name || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (log.issued_by_name || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (log.remarks || "").toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   return (
     <DashboardLayout>
-      <div className="space-y-6">
+      <div className="flex flex-col h-full gap-[var(--space-4)] max-w-[var(--content-max-width)] w-full mx-auto">
 
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight flex items-center gap-2.5">
-              <ArrowUpRight className="w-7 h-7 text-primary-top" />
-              Outward Logs
-            </h1>
-            <p className="text-sm text-slate-500 mt-1">Manage material issuance (Outward) to Sites / Engineers</p>
-          </div>
-          <div className="flex items-center gap-2.5 shrink-0">
-            <button
-              type="button"
-              className="bg-[#DC2604] hover:bg-primary-bottom text-white px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 cursor-pointer shrink-0 shadow-sm transition-colors"
-            >
-              <Plus className="w-4 h-4" /> Issue Material
-            </button>
+        <div className="flex flex-wrap items-center justify-between gap-[var(--space-3)]">
+          <div className="flex items-center gap-[var(--space-3)]">
+            <div className="
+              w-[clamp(2rem,1.5rem+1.5vw,2.75rem)] h-[clamp(2rem,1.5rem+1.5vw,2.75rem)]
+              rounded-[var(--radius-lg)]
+              bg-gradient-to-b from-[var(--color-primary-top)] to-[var(--color-primary-bottom)]
+              flex items-center justify-center
+              shadow-[0_4px_12px_var(--color-primary-shadow)]
+            ">
+              <ArrowUpRight className="w-[var(--icon-md)] h-[var(--icon-md)] text-white" />
+            </div>
+            <div>
+              <h1 className="text-[var(--text-xl)] font-bold text-slate-800 leading-tight">Outward Logs</h1>
+              <p className="text-[var(--text-xs)] text-slate-500 mt-[var(--space-1)]">
+                History of all material issuance (Outward) to Sites / Engineers
+              </p>
+            </div>
           </div>
         </div>
 
         {/* Search */}
-        <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
-          <div className="relative max-w-md">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+        <div className="flex flex-wrap gap-[var(--space-3)] bg-white p-[var(--card-padding)] rounded-[var(--radius-xl)] border border-[var(--color-layout-border)] shadow-sm">
+          <div className="relative flex-1 min-w-[180px] max-w-sm">
+            <Search className="absolute left-[var(--space-3)] top-1/2 -translate-y-1/2 text-slate-400 w-[var(--icon-md)] h-[var(--icon-md)]" />
             <input
               type="text"
-              placeholder="Search by ID, Project or Engineer..."
+              placeholder="Search by Outward No, Store, Site, Issued To..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#DC2604]/20 focus:border-[#DC2604] transition-all"
+              className="
+                w-full h-[var(--input-height)]
+                pl-[calc(var(--space-3)*2+var(--icon-md))] pr-[var(--space-4)]
+                rounded-[var(--radius-xl)]
+                border border-[var(--color-secondary-border)]
+                bg-slate-50 text-[var(--text-sm)] text-slate-800
+                placeholder:text-slate-400
+                focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-top)]/20 focus:border-[var(--color-primary-top)]
+                transition-colors duration-150
+              "
             />
           </div>
         </div>
 
         {/* Table */}
-        <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm text-left">
-              <thead className="text-xs text-slate-600 uppercase bg-slate-50 border-b border-slate-200">
+        <div className="flex-1 flex gap-[var(--space-4)] overflow-hidden min-h-0">
+          <div className="flex-1 overflow-auto scrollbar-thin scrollbar-thumb-slate-300 scrollbar-track-transparent rounded-[var(--radius-xl)] border border-[var(--color-layout-border)] bg-white">
+            <table className="w-full min-w-[800px] border-collapse text-[var(--text-sm)]">
+              <thead>
                 <tr>
-                  <th className="px-6 py-4 font-semibold">#</th>
-                  <th className="px-6 py-4 font-semibold">Outward ID</th>
-                  <th className="px-6 py-4 font-semibold">Date</th>
-                  <th className="px-6 py-4 font-semibold">Project</th>
-                  <th className="px-6 py-4 font-semibold">Site / Feeder</th>
-                  <th className="px-6 py-4 font-semibold">Issued To</th>
-                  <th className="px-6 py-4 font-semibold">Items</th>
-                  <th className="px-6 py-4 font-semibold">Status</th>
-                  <th className="px-6 py-4 font-semibold text-right">Actions</th>
+                  <th className="sticky top-0 z-10 px-[var(--table-cell-px)] py-[var(--table-cell-py)] text-[var(--text-xs)] font-semibold text-slate-500 uppercase tracking-wider bg-slate-50/80 backdrop-blur-sm border-b border-[var(--color-layout-border)] whitespace-nowrap text-left">
+                    #
+                  </th>
+                  <th className="sticky top-0 z-10 px-[var(--table-cell-px)] py-[var(--table-cell-py)] text-[var(--text-xs)] font-semibold text-slate-500 uppercase tracking-wider bg-slate-50/80 backdrop-blur-sm border-b border-[var(--color-layout-border)] whitespace-nowrap text-left">
+                    Outward Number
+                  </th>
+                  <th className="sticky top-0 z-10 px-[var(--table-cell-px)] py-[var(--table-cell-py)] text-[var(--text-xs)] font-semibold text-slate-500 uppercase tracking-wider bg-slate-50/80 backdrop-blur-sm border-b border-[var(--color-layout-border)] whitespace-nowrap text-left">
+                    Store Name
+                  </th>
+                  <th className="sticky top-0 z-10 px-[var(--table-cell-px)] py-[var(--table-cell-py)] text-[var(--text-xs)] font-semibold text-slate-500 uppercase tracking-wider bg-slate-50/80 backdrop-blur-sm border-b border-[var(--color-layout-border)] whitespace-nowrap text-left">
+                    Site Name
+                  </th>
+                  <th className="sticky top-0 z-10 px-[var(--table-cell-px)] py-[var(--table-cell-py)] text-[var(--text-xs)] font-semibold text-slate-500 uppercase tracking-wider bg-slate-50/80 backdrop-blur-sm border-b border-[var(--color-layout-border)] whitespace-nowrap text-left">
+                    Issued To
+                  </th>
+                  <th className="sticky top-0 z-10 px-[var(--table-cell-px)] py-[var(--table-cell-py)] text-[var(--text-xs)] font-semibold text-slate-500 uppercase tracking-wider bg-slate-50/80 backdrop-blur-sm border-b border-[var(--color-layout-border)] whitespace-nowrap text-left">
+                    Issued By
+                  </th>
+                  <th className="sticky top-0 z-10 px-[var(--table-cell-px)] py-[var(--table-cell-py)] text-[var(--text-xs)] font-semibold text-slate-500 uppercase tracking-wider bg-slate-50/80 backdrop-blur-sm border-b border-[var(--color-layout-border)] whitespace-nowrap text-left">
+                    Issued At
+                  </th>
+                  <th className="sticky top-0 z-10 px-[var(--table-cell-px)] py-[var(--table-cell-py)] text-[var(--text-xs)] font-semibold text-slate-500 uppercase tracking-wider bg-slate-50/80 backdrop-blur-sm border-b border-[var(--color-layout-border)] whitespace-nowrap text-center">
+                    Total Items
+                  </th>
+                  <th className="sticky top-0 z-10 px-[var(--table-cell-px)] py-[var(--table-cell-py)] text-[var(--text-xs)] font-semibold text-slate-500 uppercase tracking-wider bg-slate-50/80 backdrop-blur-sm border-b border-[var(--color-layout-border)] whitespace-nowrap text-left">
+                    Remarks
+                  </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-200">
+              <tbody className="divide-y divide-[var(--color-layout-border)]">
                 {loading ? (
                   <tr>
-                    <td colSpan="9" className="px-6 py-12 text-center text-slate-500">
-                      <div className="flex flex-col items-center gap-3">
-                        <Loader2 className="w-8 h-8 animate-spin text-[#DC2604]" />
-                        <p>Loading Outward Logs...</p>
-                      </div>
+                    <td colSpan={9} className="text-center py-[var(--space-10)] text-slate-500">
+                      <Loader2 className="w-[var(--icon-lg)] h-[var(--icon-lg)] animate-spin mx-auto text-[var(--color-primary-top)]" />
+                      <p className="mt-[var(--space-2)] text-[var(--text-sm)]">Loading Outward Logs...</p>
                     </td>
                   </tr>
                 ) : filteredLogs.length === 0 ? (
                   <tr>
-                    <td colSpan="9" className="px-6 py-12 text-center text-slate-400">
-                      No Outward Logs found
+                    <td colSpan={9} className="text-center py-[var(--space-10)] text-[var(--text-sm)] text-slate-500">
+                      No Outward Logs found.
                     </td>
                   </tr>
                 ) : (
                   filteredLogs.map((log, i) => (
-                    <tr key={log.id} className="hover:bg-slate-50/50 transition-colors">
-                      <td className="px-6 py-4 text-slate-400 text-xs">{i + 1}</td>
-                      <td className="px-6 py-4 font-semibold text-slate-900">{log.id}</td>
-                      <td className="px-6 py-4 text-slate-600 whitespace-nowrap">{log.date}</td>
-                      <td className="px-6 py-4 text-slate-600">{log.project}</td>
-                      <td className="px-6 py-4 text-slate-600">{log.site}</td>
-                      <td className="px-6 py-4 text-slate-600 font-medium">{log.engineer}</td>
-                      <td className="px-6 py-4 text-slate-600">{log.total_items}</td>
-                      <td className="px-6 py-4">
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium capitalize ${
-                          log.status === "dispatched" ? "bg-emerald-100 text-emerald-700" :
-                          log.status === "draft" ? "bg-slate-100 text-slate-600" :
-                          "bg-slate-100 text-slate-700"
-                        }`}>
-                          {log.status}
-                        </span>
+                    <tr key={log.outward_id || i} className="hover:bg-slate-50/50 transition-colors">
+                      <td className="px-[var(--table-cell-px)] py-[var(--table-cell-py)] text-[var(--text-xs)] text-slate-400 border-b border-[var(--color-layout-border)]">
+                        {i + 1}
                       </td>
-                      <td className="px-6 py-4 text-right">
-                        <div className="flex items-center justify-end gap-2">
-                          <button
-                            type="button"
-                            title="View Details"
-                            className="p-1.5 text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer inline-flex"
-                          >
-                            <Eye className="w-4 h-4" />
-                          </button>
-                          <button
-                            type="button"
-                            title="Download Challan"
-                            className="p-1.5 text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer inline-flex"
-                          >
-                            <FileText className="w-4 h-4" />
-                          </button>
-                        </div>
+                      <td className="px-[var(--table-cell-px)] py-[var(--table-cell-py)] text-[var(--text-sm)] font-semibold text-[var(--color-primary-top)] border-b border-[var(--color-layout-border)] whitespace-nowrap">
+                        {log.outward_number}
+                      </td>
+                      <td className="px-[var(--table-cell-px)] py-[var(--table-cell-py)] text-[var(--text-sm)] text-slate-700 border-b border-[var(--color-layout-border)] whitespace-nowrap">
+                        {log.store_name || "—"}
+                      </td>
+                      <td className="px-[var(--table-cell-px)] py-[var(--table-cell-py)] text-[var(--text-sm)] text-slate-700 border-b border-[var(--color-layout-border)] whitespace-nowrap">
+                        {log.site_name || "—"}
+                      </td>
+                      <td className="px-[var(--table-cell-px)] py-[var(--table-cell-py)] text-[var(--text-sm)] text-slate-700 border-b border-[var(--color-layout-border)] whitespace-nowrap">
+                        <div className="font-medium">{log.issued_to_name || "—"}</div>
+                        {log.issue_type && (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold bg-slate-100 text-slate-600 capitalize mt-0.5">
+                            {log.issue_type}
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-[var(--table-cell-px)] py-[var(--table-cell-py)] text-[var(--text-sm)] text-slate-700 border-b border-[var(--color-layout-border)] whitespace-nowrap">
+                        {log.issued_by_name || "—"}
+                      </td>
+                      <td className="px-[var(--table-cell-px)] py-[var(--table-cell-py)] text-[var(--text-sm)] text-slate-700 border-b border-[var(--color-layout-border)] whitespace-nowrap">
+                        {log.issued_at ? new Date(log.issued_at).toLocaleString() : "—"}
+                      </td>
+                      <td className="px-[var(--table-cell-px)] py-[var(--table-cell-py)] text-[var(--text-sm)] text-slate-800 border-b border-[var(--color-layout-border)] whitespace-nowrap text-center font-bold">
+                        {log.total_items ?? 0}
+                      </td>
+                      <td className="px-[var(--table-cell-px)] py-[var(--table-cell-py)] text-[var(--text-sm)] text-slate-600 border-b border-[var(--color-layout-border)] max-w-xs truncate" title={log.remarks}>
+                        {log.remarks || "—"}
                       </td>
                     </tr>
                   ))
@@ -146,6 +177,7 @@ export default function InventoryOutwardPage() {
             </table>
           </div>
         </div>
+
       </div>
     </DashboardLayout>
   );

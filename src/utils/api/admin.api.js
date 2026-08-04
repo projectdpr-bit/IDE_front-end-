@@ -47,4 +47,7 @@ export const GET_MATERIALS_API = BASEURL + "admin/materials";
 // ── App Sheet (Source Datasets)
 export const GET_SOURCE_DATASETS_API = BASEURL + "admin/source-datasets";
 export const CREATE_SOURCE_DATASET_API = BASEURL + "admin/source-datasets";
+export const CREATE_DATASET_API = BASEURL + "admin/datasets";
+export const CREATE_SOURCE_DATASET_COLUMNS_BULK_API = (id) => BASEURL + `admin/source-datasets/${id}/columns/bulk`;
+export const GET_DATASET_COLUMNS_API = (id) => BASEURL + `admin/datasets/${id}/columns`;
 

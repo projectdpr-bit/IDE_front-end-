@@ -108,6 +108,10 @@ export const menu = {
       path: "/store/dashboard",
     },
     {
+      name: "Dispatch Items",
+      path: "/store/pos",
+    },
+    {
       name: "Inward Logs",
       path: "/store/inward",
     },
@@ -124,6 +128,10 @@ export const menu = {
     {
       name: "Dashboard",
       path: "/store/dashboard",
+    },
+    {
+      name: "Dispatch Items",
+      path: "/store/pos",
     },
     {
       name: "Inward Logs",
