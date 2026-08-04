@@ -370,10 +370,10 @@ export default function InwardVerificationModal({ isOpen, onClose, selectedPO, o
         {/* Header */}
         <div className="flex items-center justify-between p-(--) border-b border-(--) bg-slate-50">
           <div>
-            <h2 className="text-(--) font-bold text-slate-800">
+            <h2 className="font-bold text-slate-800">
               Inward Stock Verification
             </h2>
-            <p className="text-(--) text-slate-500">Verify extracted fields matching store/stock/inward API payload</p>
+            <p className="text-slate-500">Verify extracted fields matching store/stock/inward API payload</p>
           </div>
           <button onClick={onClose} className="p-(--) text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-full transition-colors cursor-pointer">
             <X className="w-(--) h-(--)" />
@@ -388,8 +388,8 @@ export default function InwardVerificationModal({ isOpen, onClose, selectedPO, o
                 <div className="mb-(--) w-full max-w-md mx-auto p-(--) bg-red-50 border border-red-200 rounded-(--) flex items-start gap-(--) text-left shadow-sm">
                   <AlertCircle className="w-(--) h-(--) text-red-600 shrink-0 mt-0.5" />
                   <div>
-                    <h4 className="text-(--) font-bold text-red-800">Invoice Extraction Error</h4>
-                    <p className="text-(--) text-red-700 mt-(--)">{extractError}</p>
+                    <h4 className="font-bold text-red-800">Invoice Extraction Error</h4>
+                    <p className="text-red-700 mt-(--)">{extractError}</p>
                   </div>
                 </div>
               )}
@@ -397,8 +397,8 @@ export default function InwardVerificationModal({ isOpen, onClose, selectedPO, o
               <div className="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center mb-(--)">
                 <UploadCloud className="w-10 h-10 text-slate-400" />
               </div>
-              <h3 className="text-(--) font-bold text-slate-700 mb-(--)">Upload Invoice Images</h3>
-              <p className="text-(--) text-slate-500 mb-(--) max-w-md">
+              <h3 className="font-bold text-slate-700 mb-(--)">Upload Invoice Images</h3>
+              <p className="text-slate-500 mb-(--) max-w-md">
                 Upload supplier invoices. AI OCR will extract invoice details to create stock inward.
               </p>
               
@@ -430,17 +430,17 @@ export default function InwardVerificationModal({ isOpen, onClose, selectedPO, o
               
               {selectedFiles.length > 0 && (
                 <div className="mt-(--) w-full max-w-sm mx-auto flex flex-col gap-(--) text-left">
-                  <p className="text-(--) font-bold text-slate-500 uppercase tracking-wider mb-(--) text-center">Selected Files</p>
+                  <p className="font-bold text-slate-500 uppercase tracking-wider mb-(--) text-center">Selected Files</p>
                   {selectedFiles.map((file, index) => (
                     <div key={index} className="flex items-center justify-between bg-white border border-(--) shadow-sm rounded-(--) px-(--) py-(--)">
-                      <span className="text-(--) text-slate-700 truncate font-medium mr-(--)" title={file.name}>{file.name}</span>
+                      <span className="text-slate-700 truncate font-medium mr-(--)" title={file.name}>{file.name}</span>
                       <button
                         onClick={() => {
                           const newFiles = [...selectedFiles];
                           newFiles.splice(index, 1);
                           setSelectedFiles(newFiles);
                         }}
-                        className="text-slate-400 hover:text-red-500 hover:bg-red-50 p-1 rounded-full transition-colors flex-shrink-0 cursor-pointer"
+                        className="text-slate-400 hover:text-red-500 hover:bg-red-50 p-1 rounded-full transition-colors shrink-0 cursor-pointer"
                         title="Remove file"
                       >
                         <X className="w-3 h-3" />
@@ -455,8 +455,8 @@ export default function InwardVerificationModal({ isOpen, onClose, selectedPO, o
           {step === "LOADING" && (
             <div className="flex flex-col items-center justify-center py-(--)">
               <Loader2 className="w-12 h-12 animate-spin text-(--) mb-(--)" />
-              <h3 className="text-(--) font-bold text-slate-700">AI is analyzing your invoice...</h3>
-              <p className="text-(--) text-slate-500 mt-(--)">Extracting line items and stock inward fields.</p>
+              <h3 className="font-bold text-slate-700">AI is analyzing your invoice...</h3>
+              <p className="text-slate-500 mt-(--)">Extracting line items and stock inward fields.</p>
             </div>
           )}
 
@@ -470,14 +470,14 @@ export default function InwardVerificationModal({ isOpen, onClose, selectedPO, o
                   <div>
                     <span className="text-(--) font-bold">Invoice Extracted Successfully</span>
                     {formData.image_urls?.length > 0 && (
-                      <span className="text-(--) text-green-600 ml-2">({formData.image_urls.length} images)</span>
+                      <span className="text-green-600 ml-2">({formData.image_urls.length} images)</span>
                     )}
                   </div>
                 </div>
                 {!isEditing && (
                   <button
                     onClick={() => setIsEditing(true)}
-                    className="flex items-center gap-(--) text-(--) font-bold uppercase tracking-wide hover:text-green-800 transition-colors bg-white px-(--) py-[var(--space-1.5)] rounded-(--) border border-green-200 shadow-xs cursor-pointer"
+                    className="flex items-center gap-(--) text-(--) font-bold uppercase tracking-wide hover:text-green-800 transition-colors bg-white px-(--) py-(--space-1.5) rounded-(--) border border-green-200 shadow-xs cursor-pointer"
                   >
                     <Edit3 className="w-(--) h-(--)" /> Edit Details
                   </button>
@@ -492,13 +492,13 @@ export default function InwardVerificationModal({ isOpen, onClose, selectedPO, o
                   
                   {/* 1. Header Details (50%) */}
                   <div className="bg-slate-50 p-(--) rounded-(--) border border-(--) space-y-(--)">
-                    <h4 className="text-(--) font-bold text-slate-500 uppercase tracking-wider mb-(--) border-b border-slate-200 pb-(--) flex items-center justify-between">
+                    <h4 className="font-bold text-slate-500 uppercase tracking-wider mb-(--) border-b border-slate-200 pb-(--) flex items-center justify-between">
                       <span>Inward Header</span>
                       <FileText className="w-3.5 h-3.5 text-slate-400" />
                     </h4>
                     
                     <div>
-                      <label className="text-(--) font-medium text-slate-600 block mb-(--)">Invoice Number</label>
+                      <label className="font-medium text-slate-600 block mb-(--)">Invoice Number</label>
                       {isEditing ? (
                         <input
                           type="text"
@@ -507,12 +507,12 @@ export default function InwardVerificationModal({ isOpen, onClose, selectedPO, o
                           className="w-full h-8 px-2 rounded border border-(--) bg-white text-xs font-semibold focus:border-(--) outline-none"
                         />
                       ) : (
-                        <div className="text-(--) font-semibold text-slate-800">{formData.invoice_number || "—"}</div>
+                        <div className="font-semibold text-slate-800">{formData.invoice_number || "—"}</div>
                       )}
                     </div>
 
                     <div>
-                      <label className="text-(--) font-medium text-slate-600 block mb-(--)">Invoice Date</label>
+                      <label className="font-medium text-slate-600 block mb-(--)">Invoice Date</label>
                       {isEditing ? (
                         <input
                           type="date"
@@ -521,12 +521,12 @@ export default function InwardVerificationModal({ isOpen, onClose, selectedPO, o
                           className="w-full h-8 px-2 rounded border border-(--) bg-white text-xs focus:border-(--) outline-none"
                         />
                       ) : (
-                        <div className="text-(--) font-medium text-slate-800">{formData.invoice_date || "—"}</div>
+                        <div className="font-medium text-slate-800">{formData.invoice_date || "—"}</div>
                       )}
                     </div>
 
                     <div>
-                      <label className="text-(--) font-medium text-slate-600 block mb-(--)">E-Way Bill No.</label>
+                      <label className="font-medium text-slate-600 block mb-(--)">E-Way Bill No.</label>
                       {isEditing ? (
                         <input
                           type="text"
@@ -535,7 +535,7 @@ export default function InwardVerificationModal({ isOpen, onClose, selectedPO, o
                           className="w-full h-8 px-2 rounded border border-(--) bg-white text-xs focus:border-(--) outline-none"
                         />
                       ) : (
-                        <div className="text-(--) font-medium text-slate-800">{formData.eway_bill_no || "N/A"}</div>
+                        <div className="font-medium text-slate-800">{formData.eway_bill_no || "N/A"}</div>
                       )}
                     </div>
 
@@ -585,13 +585,13 @@ export default function InwardVerificationModal({ isOpen, onClose, selectedPO, o
 
                   {/* 2. Tax & Financials (50%) */}
                   <div className="bg-slate-50 p-(--) rounded-(--) border border-(--) space-y-(--)">
-                    <h4 className="text-(--) font-bold text-slate-500 uppercase tracking-wider mb-(--) border-b border-slate-200 pb-(--)">
+                    <h4 className="font-bold text-slate-500 uppercase tracking-wider mb-(--) border-b border-slate-200 pb-(--)">
                       Tax & Financials (₹)
                     </h4>
 
-                    <div className="grid grid-cols-2 gap-[var(--space-2.5)]">
+                    <div className="grid grid-cols-2 gap-(--space-2.5)">
                       <div>
-                        <label className="text-(--) font-medium text-slate-600 block mb-0.5">Subtotal</label>
+                        <label className="font-medium text-slate-600 block mb-0.5">Subtotal</label>
                         {isEditing ? (
                           <input
                             type="number"
@@ -601,12 +601,12 @@ export default function InwardVerificationModal({ isOpen, onClose, selectedPO, o
                             className="w-full h-7 px-2 rounded border text-xs bg-white outline-none"
                           />
                         ) : (
-                          <div className="text-(--) font-semibold text-slate-800">₹{Number(formData.subtotal || 0).toLocaleString('en-IN')}</div>
+                          <div className="font-semibold text-slate-800">₹{Number(formData.subtotal || 0).toLocaleString('en-IN')}</div>
                         )}
                       </div>
 
                       <div>
-                        <label className="text-(--) font-medium text-slate-600 block mb-0.5">Grand Total</label>
+                        <label className="font-medium text-slate-600 block mb-0.5">Grand Total</label>
                         {isEditing ? (
                           <input
                             type="number"
@@ -616,12 +616,12 @@ export default function InwardVerificationModal({ isOpen, onClose, selectedPO, o
                             className="w-full h-7 px-2 rounded border text-xs font-bold text-(--) bg-white outline-none"
                           />
                         ) : (
-                          <div className="text-(--) font-bold text-(--)">₹{Number(formData.grand_total || 0).toLocaleString('en-IN')}</div>
+                          <div className="font-bold ">₹{Number(formData.grand_total || 0).toLocaleString('en-IN')}</div>
                         )}
                       </div>
 
                       <div>
-                        <label className="text-(--) font-medium text-slate-600 block mb-0.5">CGST</label>
+                        <label className="font-medium text-slate-600 block mb-0.5">CGST</label>
                         {isEditing ? (
                           <input
                             type="number"
@@ -631,12 +631,12 @@ export default function InwardVerificationModal({ isOpen, onClose, selectedPO, o
                             className="w-full h-7 px-2 rounded border text-xs bg-white outline-none"
                           />
                         ) : (
-                          <div className="text-(--) text-slate-700">₹{formData.cgst_amount || 0}</div>
+                          <div className="text-slate-700">₹{formData.cgst_amount || 0}</div>
                         )}
                       </div>
 
                       <div>
-                        <label className="text-(--) font-medium text-slate-600 block mb-0.5">SGST</label>
+                        <label className="font-medium text-slate-600 block mb-0.5">SGST</label>
                         {isEditing ? (
                           <input
                             type="number"
@@ -646,12 +646,12 @@ export default function InwardVerificationModal({ isOpen, onClose, selectedPO, o
                             className="w-full h-7 px-2 rounded border text-xs bg-white outline-none"
                           />
                         ) : (
-                          <div className="text-(--) text-slate-700">₹{formData.sgst_amount || 0}</div>
+                          <div className="text-slate-700">₹{formData.sgst_amount || 0}</div>
                         )}
                       </div>
 
                       <div>
-                        <label className="text-(--) font-medium text-slate-600 block mb-0.5">IGST</label>
+                        <label className="font-medium text-slate-600 block mb-0.5">IGST</label>
                         {isEditing ? (
                           <input
                             type="number"
@@ -661,12 +661,12 @@ export default function InwardVerificationModal({ isOpen, onClose, selectedPO, o
                             className="w-full h-7 px-2 rounded border text-xs bg-white outline-none"
                           />
                         ) : (
-                          <div className="text-(--) text-slate-700">₹{formData.igst_amount || 0}</div>
+                          <div className="text-slate-700">₹{formData.igst_amount || 0}</div>
                         )}
                       </div>
 
                       <div>
-                        <label className="text-(--) font-medium text-slate-600 block mb-0.5">Round Off</label>
+                        <label className="font-medium text-slate-600 block mb-0.5">Round Off</label>
                         {isEditing ? (
                           <input
                             type="number"
@@ -676,7 +676,7 @@ export default function InwardVerificationModal({ isOpen, onClose, selectedPO, o
                             className="w-full h-7 px-2 rounded border text-xs bg-white outline-none"
                           />
                         ) : (
-                          <div className="text-(--) text-slate-700">₹{formData.round_off || 0}</div>
+                          <div className="text-slate-700">₹{formData.round_off || 0}</div>
                         )}
                       </div>
                     </div>
@@ -686,13 +686,13 @@ export default function InwardVerificationModal({ isOpen, onClose, selectedPO, o
 
                 {/* Full Width Row: Remarks & Images (100%) */}
                 <div className="bg-slate-50 p-(--) rounded-(--) border border-(--) space-y-(--) w-full">
-                  <h4 className="text-(--) font-bold text-slate-500 uppercase tracking-wider mb-(--) border-b border-slate-200 pb-(--)">
+                  <h4 className="font-bold text-slate-500 uppercase tracking-wider mb-(--) border-b border-slate-200 pb-(--)">
                     Remarks & Images
                   </h4>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-(--)">
                     <div>
-                      <label className="text-(--) font-medium text-slate-600 block mb-(--)">Remarks</label>
+                      <label className="font-medium text-slate-600 block mb-(--)">Remarks</label>
                       {isEditing ? (
                         <textarea
                           rows={2}
@@ -701,13 +701,13 @@ export default function InwardVerificationModal({ isOpen, onClose, selectedPO, o
                           className="w-full p-2 rounded border border-(--) bg-white text-xs focus:border-(--) outline-none resize-none"
                         />
                       ) : (
-                        <p className="text-(--) text-slate-700 italic bg-white p-2 rounded border border-slate-200">{formData.remarks || "No remarks"}</p>
+                        <p className="text-slate-700 italic bg-white p-2 rounded border border-slate-200">{formData.remarks || "No remarks"}</p>
                       )}
                     </div>
 
                     {formData.image_urls && formData.image_urls.length > 0 && (
                       <div>
-                        <div className="flex items-center gap-1 text-(--) font-semibold text-slate-600 mb-1">
+                        <div className="flex items-center gap-1 font-semibold text-slate-600 mb-1">
                           <ImageIcon className="w-3.5 h-3.5 text-slate-400" />
                           <span>Uploaded Images ({formData.image_urls.length})</span>
                         </div>
@@ -735,14 +735,14 @@ export default function InwardVerificationModal({ isOpen, onClose, selectedPO, o
               <div>
                 <div className="flex items-center justify-between mb-(--)">
                   <div>
-                    <h4 className="text-(--) font-bold text-slate-800">Items List ({formData.items.length})</h4>
-                    <p className="text-(--) text-slate-500">Matching payload fields: material_id, description, hsn_sac, unit, batch_number, quantity, unit_price</p>
+                    <h4 className="font-bold text-slate-800">Items List ({formData.items.length})</h4>
+                    <p className="text-slate-500">Matching payload fields: material_id, description, hsn_sac, unit, batch_number, quantity, unit_price</p>
                   </div>
                 </div>
 
                 <div className="overflow-x-auto rounded-(--) border border-(--) bg-white shadow-xs">
-                  <table className="w-full text-left text-(--) min-w-[800px]">
-                    <thead className="bg-slate-50 text-(--) font-semibold text-slate-500 uppercase border-b border-(--)">
+                  <table className="w-full text-left text-(--) min-w-200">
+                    <thead className="bg-slate-50 font-semibold text-slate-500 uppercase border-b border-(--)">
                       <tr>
                         <th className="px-(--) py-(--) w-10 text-center">#</th>
                         <th className="px-(--) py-(--) w-24">Material ID</th>
@@ -762,7 +762,7 @@ export default function InwardVerificationModal({ isOpen, onClose, selectedPO, o
 
                         return (
                           <tr key={idx} className="bg-white hover:bg-slate-50/50 transition-colors">
-                            <td className="px-(--) py-(--) text-center text-(--) text-slate-400 font-semibold">
+                            <td className="px-(--) py-(--) text-center text-slate-400 font-semibold">
                               {idx + 1}
                             </td>
                             <td className="px-(--) py-(--)">
@@ -802,7 +802,7 @@ export default function InwardVerificationModal({ isOpen, onClose, selectedPO, o
                                   />
                                 )
                               ) : (
-                                <div className="text-(--) font-medium text-slate-800">{item.description || "—"}</div>
+                                <div className="font-medium text-slate-800">{item.description || "—"}</div>
                               )}
                             </td>
                             <td className="px-(--) py-(--)">
@@ -814,7 +814,7 @@ export default function InwardVerificationModal({ isOpen, onClose, selectedPO, o
                                   className="w-full h-8 px-2 border rounded text-xs font-mono"
                                 />
                               ) : (
-                                <span className="font-mono text-slate-600 text-(--)">{item.hsn_sac || "—"}</span>
+                                <span className="font-mono text-slate-600 ">{item.hsn_sac || "—"}</span>
                               )}
                             </td>
                             <td className="px-(--) py-(--)">
@@ -826,7 +826,7 @@ export default function InwardVerificationModal({ isOpen, onClose, selectedPO, o
                                   className="w-full h-8 px-2 border rounded text-xs"
                                 />
                               ) : (
-                                <span className="text-slate-600 text-(--)">{item.unit || "CIL"}</span>
+                                <span className="text-slate-600 ">{item.unit || "CIL"}</span>
                               )}
                             </td>
                             <td className="px-(--) py-(--)">
@@ -892,7 +892,7 @@ export default function InwardVerificationModal({ isOpen, onClose, selectedPO, o
                             <button
                               type="button"
                               onClick={handleAddItem}
-                              className="btn-3d-secondary px-(--) h-(--) rounded-(--) text-(--) font-semibold inline-flex items-center gap-1.5 text-(--) border-(--)/30 hover:bg-orange-50 cursor-pointer shadow-xs"
+                              className="btn-3d-secondary px-(--) h-(--) rounded-(--) font-semibold inline-flex items-center gap-1.5 border-(--)/30 hover:bg-orange-50 cursor-pointer shadow-xs"
                             >
                               <Plus className="w-3.5 h-3.5" />
                               <span>Add Item</span>
@@ -903,7 +903,7 @@ export default function InwardVerificationModal({ isOpen, onClose, selectedPO, o
                     </tbody>
                     <tfoot className="bg-slate-50 font-bold border-t border-(--)">
                       <tr>
-                        <td colSpan={6} className="px-(--) py-(--) text-right text-(--) uppercase text-slate-500">
+                        <td colSpan={6} className="px-(--) py-(--) text-right uppercase text-slate-500">
                           Total Items Subtotal:
                         </td>
                         <td className="px-(--) py-(--) text-right font-bold text-slate-900">
@@ -936,7 +936,7 @@ export default function InwardVerificationModal({ isOpen, onClose, selectedPO, o
             {isEditing && (
               <button
                 onClick={() => setIsEditing(false)}
-                className="bg-blue-600 hover:bg-blue-700 text-white px-(--) h-(--) rounded-(--) text-(--) font-medium shadow-sm cursor-pointer"
+                className="bg-blue-600 hover:bg-blue-700 text-white px-(--) h-(--) rounded-(--) font-medium shadow-sm cursor-pointer"
               >
                 Done Editing
               </button>
