@@ -3,7 +3,7 @@ import Navbar from "@/components/common/Navbar";
 
 export default function DashboardLayout({ children }) {
   return (
-    <div className="flex h-screen bg-layout-bg text-slate-800 font-sans p-2 sm:p-4 pt-20 sm:pt-20 lg:pt-4 gap-3 sm:gap-4 overflow-hidden">
+    <div className="flex h-screen bg-layout-bg text-slate-800 font-sans p-4 sm:p-6 lg:p-6 pt-20 sm:pt-24 lg:pt-6 gap-4 sm:gap-6 lg:gap-6 overflow-hidden">
       {/* Floating Island Sidebar */}
       <Sidebar />
 

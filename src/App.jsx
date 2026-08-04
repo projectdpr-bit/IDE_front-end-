@@ -15,6 +15,9 @@ import StoresPage from "@/features/admin/StoresPage";
 import ClientsPage from "@/features/admin/ClientsPage";
 import DrawingPage from "@/features/admin/DrawingPage";
 import AppSheetPage from "@/features/admin/AppSheetPage";
+import LabourContractorsPage from "@/features/admin/LabourContractorsPage";
+import JointersPage from "@/features/admin/JointersPage";
+import WorksheetTemplatesPage from "@/features/admin/WorksheetTemplatesPage";
 
 import HRDashboard from "@/features/hrms/HRDashboard";
 import EmployeeListPage from "@/features/hrms/EmployeeListPage";
@@ -26,7 +29,8 @@ import StoreDashboard from "@/features/store/StoreDashboard";
 import StorePOPage from "@/features/store/StorePOPage";
 import InventoryInwardPage from "@/features/store/InventoryInwardPage";
 import InventoryOutwardPage from "@/features/store/InventoryOutwardPage";
-import StockAgingPage from "@/features/store/StockAgingPage";
+import InHandStockPage from "@/features/store/InHandStockPage";
+import RepairPage from "@/features/store/RepairPage";
 import ProcurementDashboard from "@/features/procurement/ProcurementDashboard";
 import VendorPage from "@/features/procurement/VendorPage";
 import PurchaseRequestsPage from "@/features/procurement/PurchaseRequestsPage";
@@ -62,6 +66,9 @@ export default function App() {
         <Route path="/admin/clients" element={<ProtectedRoute><ClientsPage /></ProtectedRoute>} />
         <Route path="/admin/drawing" element={<ProtectedRoute><DrawingPage /></ProtectedRoute>} />
         <Route path="/admin/app-sheet" element={<ProtectedRoute><AppSheetPage /></ProtectedRoute>} />
+        <Route path="/admin/dataset/labour-contractors" element={<ProtectedRoute><LabourContractorsPage /></ProtectedRoute>} />
+        <Route path="/admin/dataset/jointers" element={<ProtectedRoute><JointersPage /></ProtectedRoute>} />
+        <Route path="/admin/worksheet-templates" element={<ProtectedRoute><WorksheetTemplatesPage /></ProtectedRoute>} />
 
         {/* 2. HR / HRMS Feature Routes */}
         <Route path="/hr/dashboard" element={<ProtectedRoute><HRDashboard /></ProtectedRoute>} />
@@ -80,7 +87,8 @@ export default function App() {
         <Route path="/store/pos" element={<ProtectedRoute><StorePOPage /></ProtectedRoute>} />
         <Route path="/store/inward" element={<ProtectedRoute><InventoryInwardPage /></ProtectedRoute>} />
         <Route path="/store/outward" element={<ProtectedRoute><InventoryOutwardPage /></ProtectedRoute>} />
-        <Route path="/store/stock-aging" element={<ProtectedRoute><StockAgingPage /></ProtectedRoute>} />
+        <Route path="/store/in-hand-stock" element={<ProtectedRoute><InHandStockPage /></ProtectedRoute>} />
+        <Route path="/store/repair" element={<ProtectedRoute><RepairPage /></ProtectedRoute>} />
         <Route path="/procurement/dashboard" element={<ProtectedRoute><ProcurementDashboard /></ProtectedRoute>} />
         <Route path="/procurement/vendor" element={<ProtectedRoute><VendorPage /></ProtectedRoute>} />
         <Route path="/procurement/purchase-requests" element={<ProtectedRoute><PurchaseRequestsPage /></ProtectedRoute>} />

@@ -88,8 +88,25 @@ export const menu = {
       path: "/admin/drawing",
     },
     {
+      name: "Worksheets",
+      path: "/admin/worksheet-templates",
+    },
+    {
       name: "App Sheet",
       path: "/admin/app-sheet",
+    },
+    {
+      name: "Dataset",
+      subItems: [
+        {
+          name: "Labour Contractors",
+          path: "/admin/dataset/labour-contractors",
+        },
+        {
+          name: "Jointers",
+          path: "/admin/dataset/jointers",
+        },
+      ],
     },
   ],
   client: [
@@ -120,8 +137,12 @@ export const menu = {
       path: "/store/outward",
     },
     {
-      name: "Stock Aging",
-      path: "/store/stock-aging",
+      name: "In Hand Stock",
+      path: "/store/in-hand-stock",
+    },
+    {
+      name: "Repairs",
+      path: "/store/repair",
     }
   ],
   "store": [
@@ -142,8 +163,12 @@ export const menu = {
       path: "/store/outward",
     },
     {
-      name: "Stock Aging",
-      path: "/store/stock-aging",
+      name: "In Hand Stock",
+      path: "/store/in-hand-stock",
+    },
+    {
+      name: "Repairs",
+      path: "/store/repair",
     }
   ]
 };

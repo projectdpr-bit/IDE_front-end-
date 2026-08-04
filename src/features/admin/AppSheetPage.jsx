@@ -216,7 +216,7 @@ export default function AppSheetPage() {
         {/* Header */}
         <div className="flex flex-wrap items-center justify-between gap-[var(--space-3)]">
           <div className="flex items-center gap-[var(--space-3)]">
-            <div className="w-[clamp(2rem,1.5rem+1.5vw,2.75rem)] h-[clamp(2rem,1.5rem+1.5vw,2.75rem)] rounded-[var(--radius-lg)] bg-gradient-to-b from-[var(--color-primary-top)] to-[var(--color-primary-bottom)] flex items-center justify-center shadow-[0_4px_12px_var(--color-primary-shadow)]">
+            <div className="shrink-0 w-[clamp(2rem,1.5rem+1.5vw,2.75rem)] h-[clamp(2rem,1.5rem+1.5vw,2.75rem)] rounded-[var(--radius-lg)] bg-gradient-to-b from-[var(--color-primary-top)] to-[var(--color-primary-bottom)] flex items-center justify-center shadow-[0_4px_12px_var(--color-primary-shadow)]">
               <FileSpreadsheet className="w-[var(--icon-md)] h-[var(--icon-md)] text-white" />
             </div>
             <div>

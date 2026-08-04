@@ -9,3 +9,7 @@ export const EXTRACT_INVOICE_IMAGES_API = BASEURL + "store/stock/inward/extract-
 export const STORE_STOCK_INWARD_API = BASEURL + "store/stock/inward";
 export const STORE_STOCK_OUTWARD_API = BASEURL + "store/stock/outward";
 export const GET_STORE_PO_BOQ_ITEMS_API = (poId) => `${BASEURL}store/purchase-orders/${poId}/boq-items`;
+export const GET_STORE_IN_HAND_STOCK_API = BASEURL + "store/stock/item-wise-aging";
+export const GET_STORE_REPAIR_API = BASEURL + "store/stock/repair";
+export const GET_STORE_BOQ_ITEMS_API = BASEURL + "store/boq-items";
+export const GET_STORE_STORES_API = BASEURL + "store/stores";

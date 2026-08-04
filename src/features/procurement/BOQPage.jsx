@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import DashboardLayout from "@/layouts/DashboardLayout";
-import { PackageSearch, Plus, Search, Loader2, Edit3, Trash2, FileUp } from "lucide-react";
+import { PackageSearch, Plus, Search, Loader2, Edit3, Trash2, FileUp, ListPlus, PlusCircle } from "lucide-react";
 import apiClient from "@/lib/axios";
 import { GET_BOQ_ITEMS_API, ADD_BOQ_ITEM_API, IMPORT_BOQ_ITEMS_API, GET_PROCUREMENT_PROJECTS_API } from "@/utils/ApiHelper";
 import SideDrawer from "@/components/ui/SideDrawer";
@@ -34,6 +34,17 @@ export default function BOQPage() {
   });
 
   const [formErrors, setFormErrors] = useState({});
+
+  // Multi Add State
+  const [showMultiAddDrawer, setShowMultiAddDrawer] = useState(false);
+  const [multiSubmitting, setMultiSubmitting] = useState(false);
+  const [multiSubmitError, setMultiSubmitError] = useState("");
+  const [multiFormData, setMultiFormData] = useState({
+    project_id: "",
+    items: [
+      { name: "", item_type: "", unit: "", boq_qty: "" }
+    ]
+  });
 
   // Import State
   const [showImportDrawer, setShowImportDrawer] = useState(false);
@@ -172,6 +183,71 @@ export default function BOQPage() {
     }
   };
 
+  const handleMultiChange = (index, field, value) => {
+    const newItems = [...multiFormData.items];
+    newItems[index][field] = value;
+    setMultiFormData(prev => ({ ...prev, items: newItems }));
+  };
+
+  const addMultiRow = () => {
+    setMultiFormData(prev => ({
+      ...prev,
+      items: [...prev.items, { name: "", item_type: "", unit: "", boq_qty: "" }]
+    }));
+  };
+
+  const removeMultiRow = (index) => {
+    if (multiFormData.items.length > 1) {
+      setMultiFormData(prev => ({
+        ...prev,
+        items: prev.items.filter((_, i) => i !== index)
+      }));
+    }
+  };
+
+  const handleMultiSubmit = async (e) => {
+    e.preventDefault();
+    if (!multiFormData.project_id) {
+      setMultiSubmitError("Please select a project.");
+      return;
+    }
+    
+    // validate items
+    const validItems = multiFormData.items.filter(item => item.name && item.unit && item.boq_qty);
+    if (validItems.length === 0) {
+      setMultiSubmitError("Please add at least one valid item with Name, Unit, and BOQ Qty.");
+      return;
+    }
+
+    setMultiSubmitting(true);
+    setMultiSubmitError("");
+
+    try {
+      const payload = {
+        project_id: parseInt(multiFormData.project_id),
+        items: validItems.map(item => ({
+          name: item.name,
+          item_type: item.item_type || "",
+          unit: item.unit,
+          boq_qty: parseFloat(item.boq_qty)
+        }))
+      };
+
+      const res = await apiClient.post(IMPORT_BOQ_ITEMS_API, payload);
+      if (res.data?.success) {
+        setShowMultiAddDrawer(false);
+        fetchBOQItems();
+      } else {
+        setMultiSubmitError(res.data?.message || "Failed to add multiple BOQ Items");
+      }
+    } catch (err) {
+      console.error("Error saving multiple BOQ Items:", err);
+      setMultiSubmitError(err.response?.data?.message || "Error saving multiple BOQ Items");
+    } finally {
+      setMultiSubmitting(false);
+    }
+  };
+
   const handleImportSubmit = async (e) => {
     e.preventDefault();
     if (!importFormData.project_id) {
@@ -270,15 +346,17 @@ export default function BOQPage() {
     <DashboardLayout>
       <div className="space-y-6">
         {/* Header Section */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex flex-wrap items-center justify-between gap-(--space-3)">
           <div>
-            <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight flex items-center gap-2.5">
-              <PackageSearch className="w-7 h-7 text-[#DC2604]" />
-              BOQ Management
-            </h1>
-            <p className="text-sm text-slate-500 mt-1">
-              Manage procurement Bill of Quantities (BOQ), items, and inventory catalog
-            </p>
+            <div className="flex items-center gap-(--space-3)">
+            <div className="shrink-0 w-[clamp(2rem,1.5rem+1.5vw,2.75rem)] h-[clamp(2rem,1.5rem+1.5vw,2.75rem)] rounded-lg bg-linear-to-b from-primary-top to-primary-bottom flex items-center justify-center shadow-[0_4px_12px_var(--color-primary-shadow)]">
+              <PackageSearch className="w-(--icon-md) h-(--icon-md) text-white" />
+            </div>
+            <div className="min-w-0">
+              <h1 className="text-(--text-xl) font-bold text-slate-800 leading-tight truncate">BOQ Management</h1>
+              <p className="text-(--text-xs) text-slate-500 mt-(--space-1) truncate">Manage procurement Bill of Quantities (BOQ), items, and inventory catalog</p>
+            </div>
+          </div>
           </div>
 
           <div className="flex items-center gap-2.5 shrink-0">
@@ -299,6 +377,17 @@ export default function BOQPage() {
               className="bg-[#DC2604] hover:bg-primary-bottom text-white px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 cursor-pointer shrink-0 shadow-sm transition-colors"
             >
               <Plus className="w-4 h-4" /> Add New BOQ
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setMultiSubmitError("");
+                setMultiFormData({ project_id: "", items: [{ name: "", item_type: "", unit: "", boq_qty: "" }] });
+                setShowMultiAddDrawer(true);
+              }}
+              className="bg-[#DC2604] hover:bg-primary-bottom text-white px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 cursor-pointer shrink-0 shadow-sm transition-colors"
+            >
+              <ListPlus className="w-4 h-4" /> Multi BOQ Item
             </button>
           </div>
         </div>
@@ -593,6 +682,118 @@ export default function BOQPage() {
           {submitError && (
             <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-xs text-red-600 font-medium">
               {submitError}
+            </div>
+          )}
+        </div>
+      </SideDrawer>
+
+      {/* Multi BOQ Items Drawer */}
+      <SideDrawer
+        isOpen={showMultiAddDrawer}
+        onClose={() => setShowMultiAddDrawer(false)}
+        title="Add Multi BOQ Items"
+        subtitle="Add multiple BOQ items at once"
+        icon={ListPlus}
+        submitText={multiSubmitting ? "Saving..." : "Save All Items"}
+        onSubmit={handleMultiSubmit}
+        loading={multiSubmitting}
+      >
+        <div className="space-y-4">
+          <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 space-y-4">
+            <h4 className="font-bold text-slate-800 text-sm border-b border-slate-200 pb-2">Project Selection</h4>
+            <div>
+              <label className={labelCls}>Project <span className="text-red-500">*</span></label>
+              <select
+                value={multiFormData.project_id}
+                onChange={(e) => setMultiFormData(prev => ({ ...prev, project_id: e.target.value }))}
+                className={inputCls(!multiFormData.project_id && multiSubmitError.includes('project'))}
+              >
+                <option value="">-- Select Project --</option>
+                {projects.map(proj => (
+                  <option key={proj.project_id} value={proj.project_id}>
+                    {proj.project_name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <h4 className="font-bold text-slate-800 text-sm">Items List</h4>
+              <button
+                type="button"
+                onClick={addMultiRow}
+                className="text-[#DC2604] hover:text-primary-bottom font-bold text-xs flex items-center gap-1 transition-colors"
+              >
+                <PlusCircle className="w-4 h-4" /> Add Row
+              </button>
+            </div>
+
+            {multiFormData.items.map((item, index) => (
+              <div key={index} className="bg-white p-4 rounded-xl border border-slate-200 space-y-3 relative">
+                {multiFormData.items.length > 1 && (
+                  <button
+                    type="button"
+                    onClick={() => removeMultiRow(index)}
+                    className="absolute -top-2 -right-2 bg-red-100 text-red-600 p-1.5 rounded-full hover:bg-red-200 transition-colors shadow-sm cursor-pointer"
+                    title="Remove item"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                )}
+                
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-600 mb-1">Name <span className="text-red-500">*</span></label>
+                    <input
+                      type="text"
+                      value={item.name}
+                      onChange={(e) => handleMultiChange(index, "name", e.target.value)}
+                      placeholder="Item name"
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs focus:outline-none focus:border-[#DC2604] focus:ring-1 focus:ring-[#DC2604]"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-600 mb-1">Item Type</label>
+                    <input
+                      type="text"
+                      value={item.item_type}
+                      onChange={(e) => handleMultiChange(index, "item_type", e.target.value)}
+                      placeholder="e.g. 1CX300"
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs focus:outline-none focus:border-[#DC2604] focus:ring-1 focus:ring-[#DC2604]"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-600 mb-1">Unit <span className="text-red-500">*</span></label>
+                    <input
+                      type="text"
+                      value={item.unit}
+                      onChange={(e) => handleMultiChange(index, "unit", e.target.value)}
+                      placeholder="e.g. Rmt, Nos"
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs focus:outline-none focus:border-[#DC2604] focus:ring-1 focus:ring-[#DC2604]"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-600 mb-1">BOQ Qty <span className="text-red-500">*</span></label>
+                    <input
+                      type="number"
+                      value={item.boq_qty}
+                      onChange={(e) => handleMultiChange(index, "boq_qty", e.target.value)}
+                      placeholder="0"
+                      step="any"
+                      min="0"
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs focus:outline-none focus:border-[#DC2604] focus:ring-1 focus:ring-[#DC2604]"
+                    />
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {multiSubmitError && (
+            <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-xs text-red-600 font-medium">
+              {multiSubmitError}
             </div>
           )}
         </div>

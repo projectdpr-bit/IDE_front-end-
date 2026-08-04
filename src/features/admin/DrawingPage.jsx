@@ -5,15 +5,17 @@ export default function DrawingPage() {
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex flex-wrap items-center justify-between gap-(--space-3)">
           <div>
-            <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight flex items-center gap-2.5">
-              <PenTool className="w-7 h-7 text-[#DC2604]" />
-              Drawing
-            </h1>
-            <p className="text-xs text-slate-500 mt-1 ">
-              Manage Drawings and blueprints.
-            </p>
+            <div className="flex items-center gap-(--space-3)">
+            <div className="shrink-0 w-[clamp(2rem,1.5rem+1.5vw,2.75rem)] h-[clamp(2rem,1.5rem+1.5vw,2.75rem)] rounded-lg bg-linear-to-b from-primary-top to-primary-bottom flex items-center justify-center shadow-[0_4px_12px_var(--color-primary-shadow)]">
+              <PenTool className="w-(--icon-md) h-(--icon-md) text-white" />
+            </div>
+            <div className="min-w-0">
+              <h1 className="text-(--text-xl) font-bold text-slate-800 leading-tight truncate">Drawing</h1>
+              <p className="text-(--text-xs) text-slate-500 mt-(--space-1) truncate">Manage Drawings and blueprints.</p>
+            </div>
+          </div>
           </div>
         </div>
         

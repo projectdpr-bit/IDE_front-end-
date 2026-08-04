@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { menu } from "@/data/menu";
 import { useAuthStore } from "@/store/useAuthStore";
-import { ChevronLeft, ChevronRight, LayoutDashboard, FolderKanban, ListTodo, ClipboardCheck, Tag, ShoppingCart, Activity, FileText, IndianRupee, Users, Building2, LogOut, UserMinus, MapPin, Store, Award, HardHat, Layers, FileSpreadsheet } from "lucide-react";
+import { ChevronLeft, ChevronRight, LayoutDashboard, FolderKanban, ListTodo, ClipboardCheck, Tag, ShoppingCart, Activity, FileText, IndianRupee, Users, Building2, LogOut, UserMinus, MapPin, Store, Award, HardHat, Layers, FileSpreadsheet, Database, ChevronDown, ChevronUp } from "lucide-react";
 
 export default function Sidebar() {
   const navigate = useNavigate();
@@ -13,13 +13,22 @@ export default function Sidebar() {
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [openSubMenu, setOpenSubMenu] = useState("");
+
+  const roleMenu = menu[role] || menu.admin || [];
+
+  useEffect(() => {
+    roleMenu.forEach(item => {
+      if (item.subItems && item.subItems.some(sub => location.pathname === sub.path)) {
+        setOpenSubMenu(item.name);
+      }
+    });
+  }, [location.pathname, roleMenu]);
 
   const handleLogout = () => {
     logout();
     navigate("/login");
   };
-
-  const roleMenu = menu[role] || menu.admin || [];
 
   // Mapping specific icons based on menu path/name (for a rich UI matching the final image)
   const getMenuIcon = (name) => {
@@ -42,6 +51,7 @@ export default function Sidebar() {
     if (n.includes("contact") || n.includes("user") || n.includes("employee")) return <Users className="w-4.5 h-4.5" />;
     if (n.includes("company") || n.includes("client")) return <Building2 className="w-4.5 h-4.5" />;
     if (n.includes("sheet")) return <FileSpreadsheet className="w-4.5 h-4.5" />;
+    if (n.includes("dataset") || n.includes("data")) return <Database className="w-4.5 h-4.5" />;
     
     return <LayoutDashboard className="w-4.5 h-4.5" />;
   };
@@ -83,7 +93,55 @@ export default function Sidebar() {
           <div className="lg:hidden fixed top-18 right-4 w-60 bg-white rounded-[20px] shadow-xl border border-slate-100 z-50 p-2 flex flex-col animate-in slide-in-from-top-4 fade-in duration-200">
             <nav className="flex flex-col gap-1 max-h-[60vh] overflow-y-auto scrollbar-none px-1">
               {roleMenu.map((item) => {
-                const isActive = location.pathname === item.path;
+                const hasSubItems = item.subItems && item.subItems.length > 0;
+                const isActive = location.pathname === item.path || (hasSubItems && item.subItems.some(sub => location.pathname === sub.path));
+                const isSubMenuOpen = openSubMenu === item.name;
+
+                if (hasSubItems) {
+                  return (
+                    <div key={item.name} className="flex flex-col">
+                      <button
+                        onClick={() => setOpenSubMenu(isSubMenuOpen ? "" : item.name)}
+                        className={`flex items-center justify-between px-3 py-2.5 rounded-xl transition-all duration-200 text-sm font-semibold ${
+                          isActive
+                            ? "bg-[#DC2604] text-white shadow-sm"
+                            : "text-slate-600 hover:bg-slate-50 hover:text-[#DC2604]"
+                        }`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className={`flex items-center justify-center shrink-0 ${isActive ? "text-white" : "text-slate-500"}`}>
+                            {getMenuIcon(item.name)}
+                          </div>
+                          {item.name}
+                        </div>
+                        {isSubMenuOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                      </button>
+                      
+                      {isSubMenuOpen && (
+                        <div className="flex flex-col gap-1 pl-10 pr-2 pt-1 pb-2">
+                          {item.subItems.map(subItem => {
+                            const isSubActive = location.pathname === subItem.path;
+                            return (
+                              <Link
+                                key={subItem.path}
+                                to={subItem.path}
+                                onClick={() => setIsMobileOpen(false)}
+                                className={`text-xs py-2 px-3 rounded-lg font-medium transition-colors ${
+                                  isSubActive 
+                                    ? "bg-rose-50 text-[#DC2604]" 
+                                    : "text-slate-500 hover:text-slate-800 hover:bg-slate-50"
+                                }`}
+                              >
+                                {subItem.name}
+                              </Link>
+                            )
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  );
+                }
+
                 return (
                   <Link
                     key={item.path}
@@ -141,7 +199,63 @@ export default function Sidebar() {
         <div className="bg-white rounded-[20px] p-3 flex-1 overflow-y-auto shadow-sm scrollbar-none">
           <nav className="flex flex-col gap-1.5">
             {roleMenu.map((item) => {
-              const isActive = location.pathname === item.path;
+              const hasSubItems = item.subItems && item.subItems.length > 0;
+              const isActive = location.pathname === item.path || (hasSubItems && item.subItems.some(sub => location.pathname === sub.path));
+
+              if (hasSubItems) {
+                return (
+                  <div key={item.name} className="flex flex-col">
+                    <button
+                      title={isCollapsed ? item.name : undefined}
+                      onClick={() => {
+                        if (isCollapsed) setIsCollapsed(false);
+                        setOpenSubMenu(openSubMenu === item.name ? "" : item.name);
+                      }}
+                      className={`flex items-center justify-between py-3 rounded-2xl transition-all duration-200 text-sm font-semibold overflow-hidden ${
+                        isCollapsed ? "px-0 justify-center" : "px-4"
+                      } ${
+                        isActive
+                          ? "bg-[#DC2604] text-white shadow-md shadow-red-500/20"
+                          : "text-slate-600 hover:bg-rose-50 hover:text-[#DC2604]"
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className={`flex items-center justify-center shrink-0 ${isActive ? "text-white" : "text-slate-500"}`}>
+                          {getMenuIcon(item.name)}
+                        </div>
+                        {!isCollapsed && <span className="whitespace-nowrap transition-opacity duration-300">{item.name}</span>}
+                      </div>
+                      {!isCollapsed && (
+                        <div className={`shrink-0 transition-transform ${openSubMenu === item.name ? "rotate-180" : ""}`}>
+                           <ChevronDown className="w-4 h-4" />
+                        </div>
+                      )}
+                    </button>
+                    
+                    {!isCollapsed && openSubMenu === item.name && (
+                      <div className="flex flex-col gap-1 pl-11 pr-2 py-2 mt-1 animate-in slide-in-from-top-2 fade-in duration-200">
+                        {item.subItems.map(subItem => {
+                          const isSubActive = location.pathname === subItem.path;
+                          return (
+                            <Link
+                              key={subItem.path}
+                              to={subItem.path}
+                              className={`text-xs py-2 px-3 rounded-xl font-medium transition-colors ${
+                                isSubActive 
+                                  ? "bg-rose-50 text-[#DC2604]" 
+                                  : "text-slate-500 hover:text-slate-800 hover:bg-slate-50"
+                              }`}
+                            >
+                              {subItem.name}
+                            </Link>
+                          )
+                        })}
+                      </div>
+                    )}
+                  </div>
+                );
+              }
+
               return (
                 <Link
                   key={item.path}

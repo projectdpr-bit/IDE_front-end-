@@ -51,3 +51,15 @@ export const CREATE_DATASET_API = BASEURL + "admin/datasets";
 export const CREATE_SOURCE_DATASET_COLUMNS_BULK_API = (id) => BASEURL + `admin/source-datasets/${id}/columns/bulk`;
 export const GET_DATASET_COLUMNS_API = (id) => BASEURL + `admin/datasets/${id}/columns`;
 
+// ── Labour Contractors
+export const LABOUR_CONTRACTORS_API = BASEURL + "admin/labour-contractors";
+
+// ── Jointers
+export const JOINTERS_API = BASEURL + "admin/jointers";
+
+// ── Worksheet Templates
+export const WORKSHEET_TEMPLATES_API = BASEURL + "admin/work-sheet-templates";
+export const GET_WORKSHEET_TEMPLATE_FIELDS_API = (id) => BASEURL + `admin/work-sheet-templates/${id}/fields`;
+export const ADD_WORKSHEET_TEMPLATE_FIELD_API = (id) => BASEURL + `admin/work-sheet-templates/${id}/fields`;
+export const ADD_WORKSHEET_TEMPLATE_FIELDS_BULK_API = (id) => BASEURL + `admin/work-sheet-templates/${id}/fields/bulk`;
+export const DELETE_WORKSHEET_TEMPLATE_FIELD_API = (fieldId) => BASEURL + `admin/work-sheet-templates/fields/${fieldId}`;
