@@ -8,7 +8,8 @@ import {
   ADD_WORKSHEET_TEMPLATE_FIELDS_BULK_API,
   DELETE_WORKSHEET_TEMPLATE_FIELD_API,
   UPDATE_WORKSHEET_TEMPLATE_FIELD_API,
-  GET_SITES_API
+  GET_SITES_API,
+  GET_WORKSHEET_OPTIONS_API
 } from "@/utils/ApiHelper";
 import { useForm } from "@/hooks/useForm";
 import { validators } from "@/utils/validation";
@@ -39,6 +40,254 @@ const FeedbackMessage = ({ feedback }) => {
     <div className={`p-[var(--space-3)] rounded-[var(--radius-lg)] mb-[var(--space-4)] text-[var(--text-sm)] font-medium flex items-center gap-[var(--space-2)] ${isSuccess ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-red-50 text-red-700 border border-red-200'}`}>
       {isSuccess ? <CheckCircle className="w-[var(--icon-md)] h-[var(--icon-md)] shrink-0" /> : <AlertCircle className="w-[var(--icon-md)] h-[var(--icon-md)] shrink-0" />}
       {feedback.text}
+    </div>
+  );
+};
+
+// Component to handle cascading system fields
+const CascadingSystemSource = ({ fieldData, onChange, sitesList, allFields = [] }) => {
+  const [projects, setProjects] = useState([]);
+  const [subDivisions, setSubDivisions] = useState([]);
+  const [feeders, setFeeders] = useState([]);
+  const [locations, setLocations] = useState([]);
+
+  const [loading, setLoading] = useState(false);
+
+  // Calculate inherited values from other fields
+  const projectField = allFields.find(f => (f.system_category === 'project' && f.source_key) || (f.configuration?.system_category === 'project' && f.configuration?.source_key));
+  const inheritedProjectId = projectField ? (projectField.source_key || projectField.configuration.source_key) : "";
+
+  const subDivField = allFields.find(f => (f.system_category === 'sub_division' && f.source_key) || (f.configuration?.system_category === 'sub_division' && f.configuration?.source_key));
+  const inheritedSubDiv = subDivField ? (subDivField.source_key || subDivField.configuration.source_key) : "";
+
+  const feederField = allFields.find(f => (f.system_category === 'feeder' && f.source_key) || (f.configuration?.system_category === 'feeder' && f.configuration?.source_key));
+  const inheritedFeeder = feederField ? (feederField.source_key || feederField.configuration.source_key) : "";
+
+  // Helper to disable options that are already used by other fields
+  const isUsed = (type) => {
+    if (fieldData.system_category === type) return false; // Allowed for current field
+    return allFields.some(f => {
+      // Must be same type to even consider
+      if (f.system_category !== type && f.configuration?.system_category !== type) return false;
+      // Skip if it's the exact same object reference (for newFieldsData)
+      if (f === fieldData) return false;
+      // Skip if it's the same field being edited (using field_key)
+      if (f.field_key && fieldData.field_key && f.field_key === fieldData.field_key) return false;
+      
+      return true; // It's a match, so this type IS used by another field
+    });
+  };
+
+  // Auto-fill temp fields if they are inherited
+  useEffect(() => {
+    if (inheritedProjectId && fieldData.temp_project_id !== inheritedProjectId && fieldData.system_category !== 'project') {
+      onChange('temp_project_id', inheritedProjectId);
+    }
+  }, [inheritedProjectId, fieldData.temp_project_id, fieldData.system_category]);
+
+  useEffect(() => {
+    if (inheritedSubDiv && fieldData.temp_sub_division !== inheritedSubDiv && fieldData.system_category !== 'sub_division') {
+      onChange('temp_sub_division', inheritedSubDiv);
+    }
+  }, [inheritedSubDiv, fieldData.temp_sub_division, fieldData.system_category]);
+
+  useEffect(() => {
+    if (inheritedFeeder && fieldData.temp_feeder !== inheritedFeeder && fieldData.system_category !== 'feeder') {
+      onChange('temp_feeder', inheritedFeeder);
+    }
+  }, [inheritedFeeder, fieldData.temp_feeder, fieldData.system_category]);
+
+  // Fetch Projects whenever it's needed
+  useEffect(() => {
+    if (fieldData.system_category && fieldData.system_category !== 'site') {
+      const fetchProjects = async () => {
+        try {
+          const res = await apiClient.get(`${GET_WORKSHEET_OPTIONS_API}?field=projects`);
+          if (res.data?.success) setProjects(res.data.data);
+        } catch (e) { console.error(e); }
+      };
+      fetchProjects();
+    }
+  }, [fieldData.system_category]);
+
+  // Fetch Sub Divisions
+  useEffect(() => {
+    if (fieldData.temp_project_id && ['sub_division', 'feeder', 'location', 'location_from', 'location_to'].includes(fieldData.system_category)) {
+      const fetchSubDivs = async () => {
+        try {
+          const res = await apiClient.get(`${GET_WORKSHEET_OPTIONS_API}?field=sub_divisions&project_id=${fieldData.temp_project_id}`);
+          if (res.data?.success) setSubDivisions(res.data.data);
+        } catch (e) { console.error(e); }
+      };
+      fetchSubDivs();
+    }
+  }, [fieldData.temp_project_id, fieldData.system_category]);
+
+  // Fetch Feeders
+  useEffect(() => {
+    if (fieldData.temp_project_id && fieldData.temp_sub_division && ['feeder', 'location', 'location_from', 'location_to'].includes(fieldData.system_category)) {
+      const fetchFeeders = async () => {
+        try {
+          const res = await apiClient.get(`${GET_WORKSHEET_OPTIONS_API}?field=feeders&project_id=${fieldData.temp_project_id}&sub_division=${fieldData.temp_sub_division}`);
+          if (res.data?.success) setFeeders(res.data.data);
+        } catch (e) { console.error(e); }
+      };
+      fetchFeeders();
+    }
+  }, [fieldData.temp_project_id, fieldData.temp_sub_division, fieldData.system_category]);
+
+  // Fetch Locations
+  useEffect(() => {
+    if (fieldData.temp_project_id && fieldData.temp_sub_division && fieldData.temp_feeder && ['location', 'location_from', 'location_to'].includes(fieldData.system_category)) {
+      const fetchLocations = async () => {
+        try {
+          const res = await apiClient.get(`${GET_WORKSHEET_OPTIONS_API}?field=locations&project_id=${fieldData.temp_project_id}&sub_division=${fieldData.temp_sub_division}&feeder=${fieldData.temp_feeder}`);
+          if (res.data?.success) setLocations(res.data.data);
+        } catch (e) { console.error(e); }
+      };
+      fetchLocations();
+    }
+  }, [fieldData.temp_project_id, fieldData.temp_sub_division, fieldData.temp_feeder, fieldData.system_category]);
+
+  return (
+    <div className="col-span-1 md:col-span-2 space-y-[var(--space-3)] p-[var(--space-3)] bg-slate-50 border border-slate-200 rounded-[var(--radius-lg)]">
+      <div>
+        <label className="text-[var(--text-xs)] font-medium text-slate-600 mb-[var(--space-1)] block">System Entity Type</label>
+        <select
+          value={fieldData.system_category || ''}
+          onChange={(e) => {
+            const val = e.target.value;
+            onChange('system_category', val);
+            onChange('source_key', '');
+            onChange('temp_project_id', '');
+            onChange('temp_sub_division', '');
+            onChange('temp_feeder', '');
+          }}
+          className="w-full h-[var(--input-height)] px-[var(--space-4)] rounded-[var(--radius-lg)] border border-[var(--color-secondary-border)] bg-white text-[var(--text-sm)] text-slate-800 focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-top)]/20 focus:border-[var(--color-primary-top)] transition-colors duration-150"
+        >
+          <option value="">Select Entity Type</option>
+          <option value="project" disabled={isUsed('project')}>Project</option>
+          <option value="sub_division" disabled={isUsed('sub_division')}>Sub Division</option>
+          <option value="feeder" disabled={isUsed('feeder')}>Feeder</option>
+          <option value="location" disabled={isUsed('location')}>Location</option>
+          <option value="location_from" disabled={isUsed('location_from')}>Location From</option>
+          <option value="location_to" disabled={isUsed('location_to')}>Location To</option>
+          <option value="site">Site (Original)</option>
+        </select>
+      </div>
+
+      {fieldData.system_category === 'site' && (
+        <div>
+          <label className="text-[var(--text-xs)] font-medium text-slate-600 mb-[var(--space-1)] block">Source Key (Site)</label>
+          <select
+            value={fieldData.source_key || ''}
+            onChange={(e) => onChange('source_key', e.target.value)}
+            className="w-full h-[var(--input-height)] px-[var(--space-4)] rounded-[var(--radius-lg)] border border-[var(--color-secondary-border)] bg-white text-[var(--text-sm)] text-slate-800 focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-top)]/20 focus:border-[var(--color-primary-top)] transition-colors duration-150"
+          >
+            <option value="">Select Site</option>
+            {sitesList.map(site => (
+              <option key={site.site_id} value={site.site_id}>
+                {site.site_name}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+
+      {fieldData.system_category && fieldData.system_category !== 'site' && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-[var(--space-4)]">
+          {['project', 'sub_division', 'feeder', 'location', 'location_from', 'location_to'].includes(fieldData.system_category) && !(!!inheritedProjectId && fieldData.system_category !== 'project') && (
+            <div>
+              <label className="text-[var(--text-xs)] font-medium text-slate-600 mb-[var(--space-1)] block">Select Project</label>
+              <select
+                value={fieldData.system_category === 'project' ? fieldData.source_key : fieldData.temp_project_id}
+                onChange={(e) => {
+                  if (fieldData.system_category === 'project') {
+                    onChange('source_key', e.target.value);
+                  } else {
+                    onChange('temp_project_id', e.target.value);
+                    onChange('temp_sub_division', '');
+                    onChange('temp_feeder', '');
+                    onChange('source_key', '');
+                  }
+                }}
+                className="w-full h-[var(--input-height)] px-[var(--space-4)] rounded-[var(--radius-lg)] border border-[var(--color-secondary-border)] bg-white text-[var(--text-sm)] text-slate-800 focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-top)]/20 focus:border-[var(--color-primary-top)] transition-colors duration-150"
+              >
+                <option value="">Select Project</option>
+                {projects.map(p => (
+                  <option key={p.project_id} value={p.project_id}>{p.project_name}</option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {['sub_division', 'feeder', 'location', 'location_from', 'location_to'].includes(fieldData.system_category) && !(!!inheritedSubDiv && fieldData.system_category !== 'sub_division') && (
+            <div>
+              <label className="text-[var(--text-xs)] font-medium text-slate-600 mb-[var(--space-1)] block">Select Sub Division</label>
+              <select
+                value={fieldData.system_category === 'sub_division' ? fieldData.source_key : fieldData.temp_sub_division}
+                onChange={(e) => {
+                  if (fieldData.system_category === 'sub_division') {
+                    onChange('source_key', e.target.value);
+                  } else {
+                    onChange('temp_sub_division', e.target.value);
+                    onChange('temp_feeder', '');
+                    onChange('source_key', '');
+                  }
+                }}
+                disabled={!fieldData.temp_project_id}
+                className="w-full h-[var(--input-height)] px-[var(--space-4)] rounded-[var(--radius-lg)] border border-[var(--color-secondary-border)] bg-white text-[var(--text-sm)] text-slate-800 focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-top)]/20 focus:border-[var(--color-primary-top)] transition-colors duration-150 disabled:bg-slate-100 disabled:text-slate-400"
+              >
+                <option value="">Select Sub Division</option>
+                {subDivisions.map((sd, idx) => (
+                  <option key={idx} value={sd}>{sd}</option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {['feeder', 'location', 'location_from', 'location_to'].includes(fieldData.system_category) && !(!!inheritedFeeder && fieldData.system_category !== 'feeder') && (
+            <div>
+              <label className="text-[var(--text-xs)] font-medium text-slate-600 mb-[var(--space-1)] block">Select Feeder</label>
+              <select
+                value={fieldData.system_category === 'feeder' ? fieldData.source_key : fieldData.temp_feeder}
+                onChange={(e) => {
+                  if (fieldData.system_category === 'feeder') {
+                    onChange('source_key', e.target.value);
+                  } else {
+                    onChange('temp_feeder', e.target.value);
+                    onChange('source_key', '');
+                  }
+                }}
+                disabled={!fieldData.temp_sub_division}
+                className="w-full h-[var(--input-height)] px-[var(--space-4)] rounded-[var(--radius-lg)] border border-[var(--color-secondary-border)] bg-white text-[var(--text-sm)] text-slate-800 focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-top)]/20 focus:border-[var(--color-primary-top)] transition-colors duration-150 disabled:bg-slate-100 disabled:text-slate-400"
+              >
+                <option value="">Select Feeder</option>
+                {feeders.map((f, idx) => (
+                  <option key={idx} value={f}>{f}</option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {['location', 'location_from', 'location_to'].includes(fieldData.system_category) && (
+            <div>
+              <label className="text-[var(--text-xs)] font-medium text-slate-600 mb-[var(--space-1)] block">Select Location</label>
+              <select
+                value={fieldData.source_key || ''}
+                onChange={(e) => onChange('source_key', e.target.value)}
+                disabled={!fieldData.temp_feeder}
+                className="w-full h-[var(--input-height)] px-[var(--space-4)] rounded-[var(--radius-lg)] border border-[var(--color-secondary-border)] bg-white text-[var(--text-sm)] text-slate-800 focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-top)]/20 focus:border-[var(--color-primary-top)] transition-colors duration-150 disabled:bg-slate-100 disabled:text-slate-400"
+              >
+                <option value="">Select Location</option>
+                {locations.map((loc) => (
+                  <option key={loc.site_id} value={loc.site_id}>{loc.location}</option>
+                ))}
+              </select>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 };
@@ -218,6 +467,10 @@ export default function WorksheetTemplatesPage() {
         is_required: false, 
         source_type: "manual",
         source_key: "",
+        system_category: "site",
+        temp_project_id: "",
+        temp_sub_division: "",
+        temp_feeder: "",
         formula: "",
         is_read_only: false
       }
@@ -269,6 +522,10 @@ export default function WorksheetTemplatesPage() {
       is_required: field.is_required,
       source_type: config.source_type || "manual",
       source_key: config.source_key || "",
+      system_category: config.system_category || (config.source_type === 'system' && config.source_key ? "site" : ""),
+      temp_project_id: config.temp_project_id || "",
+      temp_sub_division: config.temp_sub_division || "",
+      temp_feeder: config.temp_feeder || "",
       formula: config.formula || "",
       is_read_only: config.is_read_only || false
     });
@@ -290,7 +547,15 @@ export default function WorksheetTemplatesPage() {
     try {
       let parsedConfig = {};
       if (editFieldData.source_type === 'system') {
-        parsedConfig = { source_type: 'system', source_key: editFieldData.source_key, is_read_only: editFieldData.is_read_only };
+        parsedConfig = { 
+          source_type: 'system', 
+          source_key: editFieldData.source_key,
+          system_category: editFieldData.system_category,
+          temp_project_id: editFieldData.temp_project_id,
+          temp_sub_division: editFieldData.temp_sub_division,
+          temp_feeder: editFieldData.temp_feeder,
+          is_read_only: editFieldData.is_read_only 
+        };
       } else if (editFieldData.source_type === 'formula') {
         parsedConfig = { source_type: 'formula', formula: editFieldData.formula, is_read_only: editFieldData.is_read_only };
       } else {
@@ -344,7 +609,15 @@ export default function WorksheetTemplatesPage() {
         fields: validFields.map((f, idx) => {
           let parsedConfig = {};
           if (f.source_type === 'system') {
-            parsedConfig = { source_type: 'system', source_key: f.source_key, is_read_only: f.is_read_only };
+            parsedConfig = { 
+              source_type: 'system', 
+              source_key: f.source_key,
+              system_category: f.system_category,
+              temp_project_id: f.temp_project_id,
+              temp_sub_division: f.temp_sub_division,
+              temp_feeder: f.temp_feeder,
+              is_read_only: f.is_read_only 
+            };
           } else if (f.source_type === 'formula') {
             parsedConfig = { source_type: 'formula', formula: f.formula, is_read_only: f.is_read_only };
           } else {
@@ -753,21 +1026,12 @@ export default function WorksheetTemplatesPage() {
                 </div>
 
                 {editFieldData.source_type === 'system' && (
-                  <div>
-                    <label className="text-[var(--text-xs)] font-medium text-slate-600 mb-[var(--space-1)] block">Source Key (Site)</label>
-                    <select
-                      value={editFieldData.source_key}
-                      onChange={(e) => setEditFieldData({...editFieldData, source_key: e.target.value})}
-                      className="w-full h-[var(--input-height)] px-[var(--space-4)] rounded-[var(--radius-lg)] border border-[var(--color-secondary-border)] bg-white text-[var(--text-sm)] text-slate-800 focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-top)]/20 focus:border-[var(--color-primary-top)] transition-colors duration-150"
-                    >
-                      <option value="">Select Site</option>
-                      {sitesList.map(site => (
-                        <option key={site.site_id} value={site.site_id}>
-                          {site.site_name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
+                  <CascadingSystemSource
+                    fieldData={editFieldData}
+                    onChange={(k, v) => setEditFieldData({...editFieldData, [k]: v})}
+                    sitesList={sitesList}
+                    allFields={[...existingFields, ...(fieldsModalView === 'new' ? newFieldsData : [])]}
+                  />
                 )}
 
                 {editFieldData.source_type === 'formula' && (
@@ -891,21 +1155,12 @@ export default function WorksheetTemplatesPage() {
                     </div>
                     
                     {field.source_type === 'system' && (
-                      <div>
-                        <label className="text-[var(--text-xs)] font-medium text-slate-600 mb-[var(--space-1)] block">Source Key (Site)</label>
-                        <select
-                          value={field.source_key}
-                          onChange={(e) => handleNewFieldChange(idx, 'source_key', e.target.value)}
-                          className="w-full h-[var(--input-height)] px-[var(--space-4)] rounded-[var(--radius-lg)] border border-[var(--color-secondary-border)] bg-white text-[var(--text-sm)] text-slate-800 focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-top)]/20 focus:border-[var(--color-primary-top)] transition-colors duration-150"
-                        >
-                          <option value="">Select Site</option>
-                          {sitesList.map(site => (
-                            <option key={site.site_id} value={site.site_id}>
-                              {site.site_name}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
+                      <CascadingSystemSource
+                        fieldData={field}
+                        onChange={(k, v) => handleNewFieldChange(idx, k, v)}
+                        sitesList={sitesList}
+                        allFields={[...existingFields, ...newFieldsData]}
+                      />
                     )}
 
                     {field.source_type === 'formula' && (

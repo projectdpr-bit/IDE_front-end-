@@ -170,5 +170,15 @@ export const menu = {
       name: "Repairs",
       path: "/store/repair",
     }
+  ],
+  "senior site supervisor": [
+    {
+      name: "Dashboard",
+      path: "/supervisor/dashboard",
+    },
+    {
+      name: "My Attendance",
+      path: "/employee/attendance",
+    }
   ]
 };

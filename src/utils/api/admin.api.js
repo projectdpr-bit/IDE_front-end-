@@ -64,3 +64,4 @@ export const ADD_WORKSHEET_TEMPLATE_FIELD_API = (id) => BASEURL + `admin/work-sh
 export const ADD_WORKSHEET_TEMPLATE_FIELDS_BULK_API = (id) => BASEURL + `admin/work-sheet-templates/${id}/fields/bulk`;
 export const DELETE_WORKSHEET_TEMPLATE_FIELD_API = (fieldId) => BASEURL + `admin/work-sheet-templates/fields/${fieldId}`;
 export const UPDATE_WORKSHEET_TEMPLATE_FIELD_API = (fieldId) => BASEURL + `admin/work-sheet-templates/fields/${fieldId}`;
+export const GET_WORKSHEET_OPTIONS_API = BASEURL + "admin/work-sheet-options";

@@ -24,6 +24,8 @@ import EmployeeListPage from "@/features/hrms/EmployeeListPage";
 import AttendancePage from "@/features/hrms/AttendancePage";
 import EmployeeDashboard from "@/features/hrms/EmployeeDashboard";
 
+import SeniorSiteSupervisorDashboard from "@/features/supervisor/SeniorSiteSupervisorDashboard";
+
 import ClientDashboard from "@/features/client/ClientDashboard";
 import StoreDashboard from "@/features/store/StoreDashboard";
 import StorePOPage from "@/features/store/StorePOPage";
@@ -78,6 +80,9 @@ export default function App() {
         {/* 3. Employee / Field Feature Routes */}
         <Route path="/employee/dashboard" element={<ProtectedRoute><EmployeeDashboard /></ProtectedRoute>} />
         <Route path="/employee/attendance" element={<ProtectedRoute><AttendancePage /></ProtectedRoute>} />
+        
+        {/* Supervisor Routes */}
+        <Route path="/supervisor/dashboard" element={<ProtectedRoute><SeniorSiteSupervisorDashboard /></ProtectedRoute>} />
 
         {/* 4. Client Portal Routes */}
         <Route path="/client/dashboard" element={<ProtectedRoute><ClientDashboard /></ProtectedRoute>} />
