@@ -6,7 +6,9 @@ import {
   WORKSHEET_TEMPLATES_API, 
   GET_WORKSHEET_TEMPLATE_FIELDS_API,
   ADD_WORKSHEET_TEMPLATE_FIELDS_BULK_API,
-  DELETE_WORKSHEET_TEMPLATE_FIELD_API
+  DELETE_WORKSHEET_TEMPLATE_FIELD_API,
+  UPDATE_WORKSHEET_TEMPLATE_FIELD_API,
+  GET_SITES_API
 } from "@/utils/ApiHelper";
 import { useForm } from "@/hooks/useForm";
 import { validators } from "@/utils/validation";
@@ -18,8 +20,28 @@ import {
   Trash2,
   CalendarDays,
   LayoutList,
-  Columns
+  Columns,
+  X,
+  ArrowLeft,
+  Type,
+  Hash,
+  List,
+  Calculator,
+  Database,
+  CheckCircle,
+  AlertCircle
 } from "lucide-react";
+
+const FeedbackMessage = ({ feedback }) => {
+  if (!feedback) return null;
+  const isSuccess = feedback.type === 'success';
+  return (
+    <div className={`p-[var(--space-3)] rounded-[var(--radius-lg)] mb-[var(--space-4)] text-[var(--text-sm)] font-medium flex items-center gap-[var(--space-2)] ${isSuccess ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-red-50 text-red-700 border border-red-200'}`}>
+      {isSuccess ? <CheckCircle className="w-[var(--icon-md)] h-[var(--icon-md)] shrink-0" /> : <AlertCircle className="w-[var(--icon-md)] h-[var(--icon-md)] shrink-0" />}
+      {feedback.text}
+    </div>
+  );
+};
 
 export default function WorksheetTemplatesPage() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -33,9 +55,22 @@ export default function WorksheetTemplatesPage() {
   
   // Fields Drawer State
   const [showFieldsDrawer, setShowFieldsDrawer] = useState(false);
+  const [fieldsModalView, setFieldsModalView] = useState('existing'); // 'existing' | 'new'
   const [existingFields, setExistingFields] = useState([]);
   const [newFieldsData, setNewFieldsData] = useState([]);
   const [loadingFields, setLoadingFields] = useState(false);
+  const [editingFieldId, setEditingFieldId] = useState(null);
+  const [editFieldData, setEditFieldData] = useState(null);
+
+  const [pageFeedback, setPageFeedback] = useState(null);
+  const [drawerFeedback, setDrawerFeedback] = useState(null);
+  const [modalFeedback, setModalFeedback] = useState(null);
+
+  const showFeedback = (setter, type, text) => {
+    setter({ type, text });
+    setTimeout(() => setter(null), 3000);
+  };
+  const [sitesList, setSitesList] = useState([]);
   
   const fetchTemplates = async () => {
     setLoading(true);
@@ -54,8 +89,20 @@ export default function WorksheetTemplatesPage() {
     }
   };
 
+  const fetchSites = async () => {
+    try {
+      const res = await apiClient.get(GET_SITES_API);
+      if (res.data?.success && Array.isArray(res.data.data)) {
+        setSitesList(res.data.data);
+      }
+    } catch (err) {
+      console.error("Error fetching sites:", err);
+    }
+  };
+
   useEffect(() => {
     fetchTemplates();
+    fetchSites();
   }, []);
 
   const {
@@ -92,14 +139,14 @@ export default function WorksheetTemplatesPage() {
     try {
       const res = await apiClient.delete(`${WORKSHEET_TEMPLATES_API}/${id}`);
       if (res.data?.success) {
-        alert("Worksheet template deleted successfully");
+        showFeedback(setPageFeedback, 'success', "Worksheet template deleted successfully");
         fetchTemplates();
       } else {
-        alert(res.data?.message || "Failed to delete worksheet template");
+        showFeedback(setPageFeedback, 'error', res.data?.message || "Failed to delete worksheet template");
       }
     } catch (err) {
       console.error("Error deleting worksheet template:", err);
-      alert(err.response?.data?.message || "Error deleting worksheet template");
+      showFeedback(setPageFeedback, 'error', err.response?.data?.message || "Error deleting worksheet template");
     }
   };
 
@@ -125,13 +172,13 @@ export default function WorksheetTemplatesPage() {
       if (res.data?.success) {
         setShowDrawer(false);
         fetchTemplates();
-        alert(`Worksheet template ${selectedItem ? 'updated' : 'created'} successfully`);
+        showFeedback(setPageFeedback, 'success', `Worksheet template ${selectedItem ? 'updated' : 'created'} successfully`);
       } else {
-        alert(res.data?.message || `Failed to ${selectedItem ? 'update' : 'create'} worksheet template`);
+        showFeedback(setDrawerFeedback, 'error', res.data?.message || `Failed to ${selectedItem ? 'update' : 'create'} worksheet template`);
       }
     } catch (err) {
       console.error("Error saving worksheet template:", err);
-      alert(err.response?.data?.message || "Error saving worksheet template");
+      showFeedback(setDrawerFeedback, 'error', err.response?.data?.message || "Error saving worksheet template");
     } finally {
       setSubmitting(false);
     }
@@ -141,6 +188,7 @@ export default function WorksheetTemplatesPage() {
   const handleOpenFieldsDrawer = async (item) => {
     setSelectedItem(item);
     setShowFieldsDrawer(true);
+    setFieldsModalView('existing');
     setNewFieldsData([]);
     
     // Fetch existing fields
@@ -163,7 +211,16 @@ export default function WorksheetTemplatesPage() {
   const handleAddFieldRow = () => {
     setNewFieldsData([
       ...newFieldsData, 
-      { field_label: "", field_key: "", field_type: "text", is_required: false, configuration: "{}" }
+      { 
+        field_label: "", 
+        field_key: "", 
+        field_type: "text", 
+        is_required: false, 
+        source_type: "manual",
+        source_key: "",
+        formula: "",
+        is_read_only: false
+      }
     ]);
   };
 
@@ -187,27 +244,97 @@ export default function WorksheetTemplatesPage() {
       const res = await apiClient.delete(DELETE_WORKSHEET_TEMPLATE_FIELD_API(fieldId));
       if (res.data?.success) {
         setExistingFields(existingFields.filter(f => f.field_id !== fieldId));
-        alert("Field deleted successfully");
+        showFeedback(setModalFeedback, 'success', "Field deleted successfully");
         fetchTemplates(); // update count
       } else {
-        alert(res.data?.message || "Failed to delete field");
+        showFeedback(setModalFeedback, 'error', res.data?.message || "Failed to delete field");
       }
     } catch (err) {
       console.error("Error deleting field:", err);
-      alert(err.response?.data?.message || "Error deleting field");
+      showFeedback(setModalFeedback, 'error', err.response?.data?.message || "Error deleting field");
+    }
+  };
+
+  const handleEditClick = (field) => {
+    setEditingFieldId(field.field_id);
+    setFieldsModalView('edit');
+    let config = {};
+    if (field.configuration) {
+      config = typeof field.configuration === 'object' ? field.configuration : (typeof field.configuration === 'string' ? JSON.parse(field.configuration || '{}') : {});
+    }
+    setEditFieldData({
+      field_label: field.field_label,
+      field_key: field.field_key,
+      field_type: field.field_type,
+      is_required: field.is_required,
+      source_type: config.source_type || "manual",
+      source_key: config.source_key || "",
+      formula: config.formula || "",
+      is_read_only: config.is_read_only || false
+    });
+  };
+
+  const handleCancelEdit = () => {
+    setEditingFieldId(null);
+    setEditFieldData(null);
+    setFieldsModalView('existing');
+  };
+
+  const handleUpdateExistingField = async (fieldId) => {
+    if (!editFieldData.field_label.trim()) {
+      showFeedback(setModalFeedback, 'error', "Field label is required");
+      return;
+    }
+    
+    setSubmitting(true);
+    try {
+      let parsedConfig = {};
+      if (editFieldData.source_type === 'system') {
+        parsedConfig = { source_type: 'system', source_key: editFieldData.source_key, is_read_only: editFieldData.is_read_only };
+      } else if (editFieldData.source_type === 'formula') {
+        parsedConfig = { source_type: 'formula', formula: editFieldData.formula, is_read_only: editFieldData.is_read_only };
+      } else {
+        parsedConfig = { source_type: 'manual' };
+      }
+
+      const payload = {
+        field_label: editFieldData.field_label,
+        field_key: editFieldData.field_key,
+        field_type: editFieldData.field_type,
+        is_required: editFieldData.is_required,
+        configuration: parsedConfig
+      };
+
+      const res = await apiClient.put(UPDATE_WORKSHEET_TEMPLATE_FIELD_API(fieldId), payload);
+      if (res.data?.success) {
+        showFeedback(setModalFeedback, 'success', "Field updated successfully");
+        setEditingFieldId(null);
+        setFieldsModalView('existing');
+        const fetchRes = await apiClient.get(GET_WORKSHEET_TEMPLATE_FIELDS_API(selectedItem.template_id));
+        if (fetchRes.data?.success && Array.isArray(fetchRes.data.data)) {
+          setExistingFields(fetchRes.data.data);
+        }
+      } else {
+        showFeedback(setModalFeedback, 'error', res.data?.message || "Failed to update field");
+      }
+    } catch (err) {
+      console.error("Error updating field:", err);
+      showFeedback(setModalFeedback, 'error', err.response?.data?.message || "Error updating field");
+    } finally {
+      setSubmitting(false);
     }
   };
 
   const handleSaveFields = async () => {
     if (newFieldsData.length === 0) {
-      setShowFieldsDrawer(false);
+      setFieldsModalView('existing');
       return;
     }
     
     // Validate
     const validFields = newFieldsData.filter(f => f.field_label.trim() !== "");
     if (validFields.length === 0) {
-      alert("Please provide valid field labels for all new fields.");
+      showFeedback(setModalFeedback, 'error', "Please provide valid field labels for all new fields.");
       return;
     }
 
@@ -216,11 +343,14 @@ export default function WorksheetTemplatesPage() {
       const payload = {
         fields: validFields.map((f, idx) => {
           let parsedConfig = {};
-          try {
-            parsedConfig = JSON.parse(f.configuration || "{}");
-          } catch (e) {
-            console.warn("Invalid JSON in configuration for field:", f.field_label);
+          if (f.source_type === 'system') {
+            parsedConfig = { source_type: 'system', source_key: f.source_key, is_read_only: f.is_read_only };
+          } else if (f.source_type === 'formula') {
+            parsedConfig = { source_type: 'formula', formula: f.formula, is_read_only: f.is_read_only };
+          } else {
+            parsedConfig = { source_type: 'manual' };
           }
+          
           return {
             field_label: f.field_label,
             field_key: f.field_key || f.field_label.toLowerCase().replace(/[^a-z0-9]/g, '_'),
@@ -234,17 +364,22 @@ export default function WorksheetTemplatesPage() {
 
       const res = await apiClient.post(ADD_WORKSHEET_TEMPLATE_FIELDS_BULK_API(selectedItem.template_id), payload);
       if (res.data?.success) {
-        alert("Fields added successfully");
-        setShowFieldsDrawer(false);
+        showFeedback(setModalFeedback, 'success', "Fields added successfully");
+        const fetchRes = await apiClient.get(GET_WORKSHEET_TEMPLATE_FIELDS_API(selectedItem.template_id));
+        if (fetchRes.data?.success && Array.isArray(fetchRes.data.data)) {
+          setExistingFields(fetchRes.data.data);
+        }
         fetchTemplates(); // update count
       } else {
-        alert(res.data?.message || "Failed to add fields");
+        showFeedback(setModalFeedback, 'error', res.data?.message || "Failed to add fields");
       }
     } catch (err) {
       console.error("Error saving fields:", err);
-      alert(err.response?.data?.message || "Error saving fields");
+      showFeedback(setModalFeedback, 'error', err.response?.data?.message || "Error saving fields");
     } finally {
       setSubmitting(false);
+      setFieldsModalView('existing');
+      setNewFieldsData([]);
     }
   };
 
@@ -257,6 +392,7 @@ export default function WorksheetTemplatesPage() {
   return (
     <DashboardLayout>
       <div className="space-y-[var(--space-4)] max-w-[var(--content-max-width)] w-full mx-auto flex flex-col h-full">
+        <FeedbackMessage feedback={pageFeedback} />
         {/* Header */}
         <div className="flex flex-wrap items-center justify-between gap-[var(--space-3)]">
           <div className="flex items-center gap-[var(--space-3)]">
@@ -375,6 +511,7 @@ export default function WorksheetTemplatesPage() {
         onSubmit={handleFormSubmit}
         loading={submitting}
       >
+        <FeedbackMessage feedback={drawerFeedback} />
         <div className="space-y-[var(--space-4)]">
           <div>
             <label className="text-[var(--text-xs)] font-medium text-slate-600 mb-[var(--space-1)] block">Title</label>
@@ -416,78 +553,305 @@ export default function WorksheetTemplatesPage() {
       </SideDrawer>
 
       {/* Fields Drawer */}
-      <SideDrawer
-        isOpen={showFieldsDrawer}
-        onClose={() => setShowFieldsDrawer(false)}
-        title="Manage Template Fields"
-        subtitle={`Fields for ${selectedItem?.title}`}
-        icon={Columns}
-        submitText="Save New Fields"
-        onSubmit={(e) => {
-          e.preventDefault();
-          handleSaveFields();
-        }}
-        loading={submitting}
-      >
-        <div className="space-y-[var(--space-6)]">
+      {showFieldsDrawer && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-[var(--space-4)]">
+          <div className="bg-white rounded-[var(--radius-2xl)] shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col border border-[var(--color-layout-border)] overflow-hidden">
+            
+            {/* Modal Header */}
+            <div className="flex items-center justify-between p-[var(--space-4)] border-b border-[var(--color-layout-border)] bg-slate-50/80 backdrop-blur-md">
+              <div className="flex items-center gap-[var(--space-3)]">
+                <div className="w-[clamp(2.5rem,2rem+1.5vw,3rem)] h-[clamp(2.5rem,2rem+1.5vw,3rem)] rounded-[var(--radius-lg)] bg-gradient-to-br from-[var(--color-primary-top)] to-[var(--color-primary-bottom)] flex items-center justify-center shadow-sm">
+                  <Columns className="w-[var(--icon-md)] h-[var(--icon-md)] text-white" />
+                </div>
+                <div>
+                  <h2 className="text-[var(--text-lg)] font-bold text-slate-800 leading-tight">Manage Template Fields</h2>
+                  <p className="text-[var(--text-xs)] text-slate-500 mt-0.5">Fields for {selectedItem?.title}</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setShowFieldsDrawer(false)}
+                className="p-[var(--space-2)] text-slate-400 hover:text-slate-600 hover:bg-slate-200/50 rounded-[var(--radius-lg)] transition-colors"
+              >
+                <X className="w-[var(--icon-md)] h-[var(--icon-md)]" />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="flex-1 overflow-y-auto p-[var(--space-5)] scrollbar-hide bg-white">
+              <div className="space-y-[var(--space-6)]">
+                <FeedbackMessage feedback={modalFeedback} />
           
           {/* Existing Fields Section */}
+          {fieldsModalView === 'existing' && (
           <div>
-            <h4 className="text-[var(--text-sm)] font-bold text-slate-800 mb-[var(--space-2)] flex items-center justify-between">
-              Existing Fields ({existingFields.length})
-            </h4>
+            <div className="flex items-center justify-between mb-[var(--space-3)]">
+              <h4 className="text-[var(--text-sm)] font-bold text-slate-800">
+                Existing Fields ({existingFields.length})
+              </h4>
+              <button
+                type="button"
+                onClick={() => {
+                  if (newFieldsData.length === 0) handleAddFieldRow();
+                  setFieldsModalView('new');
+                }}
+                className="btn-3d-secondary px-[var(--space-3)] h-[var(--btn-height-sm)] rounded-[var(--radius-lg)] text-[var(--text-sm)] font-medium flex items-center gap-[var(--space-2)]"
+              >
+                <Plus className="w-[var(--icon-sm)] h-[var(--icon-sm)]" />
+                Add New Fields
+              </button>
+            </div>
             
             {loadingFields ? (
               <p className="text-[var(--text-xs)] text-slate-500 py-4 text-center border border-[var(--color-layout-border)] rounded-[var(--radius-lg)] border-dashed">Loading existing fields...</p>
             ) : existingFields.length === 0 ? (
               <p className="text-[var(--text-xs)] text-slate-500 py-4 text-center border border-[var(--color-layout-border)] rounded-[var(--radius-lg)] border-dashed">No fields found. Add some below.</p>
             ) : (
-              <div className="border border-[var(--color-layout-border)] rounded-[var(--radius-lg)] divide-y divide-[var(--color-layout-border)] max-h-60 overflow-y-auto">
-                {existingFields.map(field => (
-                  <div key={field.field_id} className="p-[var(--space-3)] flex items-center justify-between bg-white hover:bg-slate-50 transition-colors">
-                    <div>
-                      <div className="flex items-center gap-[var(--space-2)]">
-                        <span className="text-[var(--text-sm)] font-semibold text-slate-700">{field.field_label}</span>
-                        {field.is_required && <span className="text-[10px] bg-rose-100 text-rose-700 px-1.5 py-0.5 rounded font-bold uppercase">Required</span>}
+              <div className="border border-[var(--color-layout-border)] rounded-[var(--radius-lg)] divide-y divide-[var(--color-layout-border)] max-h-[60vh] overflow-y-auto scrollbar-hide">
+                {existingFields.map(field => {
+                  let config = {};
+                  if (field.configuration) {
+                    try {
+                      config = typeof field.configuration === 'object' ? field.configuration : JSON.parse(field.configuration);
+                    } catch (e) {}
+                  }
+
+                  const getFieldIcon = (type) => {
+                    switch (type) {
+                      case 'number': return <Hash className="w-4 h-4 text-blue-500" />;
+                      case 'date': return <CalendarDays className="w-4 h-4 text-green-500" />;
+                      case 'dropdown': return <List className="w-4 h-4 text-purple-500" />;
+                      case 'formula': return <Calculator className="w-4 h-4 text-orange-500" />;
+                      default: return <Type className="w-4 h-4 text-slate-500" />;
+                    }
+                  };
+
+                  return (
+                    <div key={field.field_id} className="p-[var(--space-4)] flex items-start sm:items-center justify-between gap-[var(--space-4)] bg-white hover:bg-slate-50 transition-colors group">
+                      <div className="flex gap-[var(--space-3)]">
+                        <div className="mt-0.5 flex-shrink-0 w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center border border-slate-200">
+                          {getFieldIcon(field.field_type)}
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-[var(--space-2)] flex-wrap">
+                            <span className="text-[var(--text-sm)] font-bold text-slate-800">{field.field_label}</span>
+                            {field.is_required && (
+                              <span className="text-[10px] bg-rose-100 text-rose-700 px-2 py-0.5 rounded-full font-bold uppercase tracking-wider border border-rose-200">Required</span>
+                            )}
+                            {config.is_read_only && (
+                              <span className="text-[10px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full font-bold uppercase tracking-wider border border-slate-200">Read Only</span>
+                            )}
+                          </div>
+                          
+                          <div className="flex items-center gap-[var(--space-3)] mt-[var(--space-1.5)] text-[var(--text-xs)] text-slate-500 flex-wrap">
+                            <span className="font-mono bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200 text-slate-600 font-medium">
+                              {field.field_key}
+                            </span>
+                            
+                            <div className="w-1 h-1 rounded-full bg-slate-300"></div>
+                            
+                            <span className="capitalize font-medium text-slate-600">
+                              {field.field_type}
+                            </span>
+                            
+                            {config.source_type && config.source_type !== 'manual' && (
+                              <>
+                                <div className="w-1 h-1 rounded-full bg-slate-300"></div>
+                                <div className="flex items-center gap-1 text-blue-600 font-medium">
+                                  <Database className="w-3.5 h-3.5" />
+                                  <span className="capitalize">{config.source_type} Source</span>
+                                  {config.source_type === 'system' && config.source_key && (
+                                    <span className="text-slate-500 font-normal">({config.source_key})</span>
+                                  )}
+                                  {config.source_type === 'formula' && config.formula && (
+                                    <span className="text-slate-500 font-mono font-normal bg-slate-100 px-1 rounded border border-slate-200">({config.formula})</span>
+                                  )}
+                                </div>
+                              </>
+                            )}
+                          </div>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-2 mt-1 text-[var(--text-2xs)] text-slate-500 font-mono">
-                        <span className="bg-slate-100 px-1 rounded">{field.field_key}</span>
-                        <span>•</span>
-                        <span>{field.field_type}</span>
+                      
+                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button
+                          type="button"
+                          onClick={() => handleEditClick(field)}
+                          className="p-2 text-slate-400 hover:text-[var(--color-primary-top)] hover:bg-slate-100 rounded-lg transition-colors"
+                          title="Edit Field"
+                        >
+                          <Edit3 className="w-[var(--icon-sm)] h-[var(--icon-sm)]" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteExistingField(field.field_id)}
+                          className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                          title="Delete Field"
+                        >
+                          <Trash2 className="w-[var(--icon-sm)] h-[var(--icon-sm)]" />
+                        </button>
                       </div>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => handleDeleteExistingField(field.field_id)}
-                      className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-md transition-colors"
-                      title="Delete Field"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>
+          )}
 
-          <hr className="border-[var(--color-layout-border)]" />
+          {/* Edit Field Section */}
+          {fieldsModalView === 'edit' && editFieldData && (
+          <div>
+            <div className="flex items-center gap-[var(--space-3)] mb-[var(--space-4)]">
+              <button
+                type="button"
+                onClick={handleCancelEdit}
+                className="p-[var(--space-1.5)] text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-[var(--radius-md)] transition-colors"
+                title="Back to Existing Fields"
+              >
+                <ArrowLeft className="w-[var(--icon-md)] h-[var(--icon-md)]" />
+              </button>
+              <h4 className="text-[var(--text-sm)] font-bold text-slate-800">Edit Field: {editFieldData.field_label}</h4>
+            </div>
+
+            <div className="p-[var(--card-padding)] border border-[var(--color-layout-border)] rounded-[var(--radius-xl)] bg-slate-50 relative space-y-[var(--space-4)] shadow-sm">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-[var(--space-4)]">
+                <div>
+                  <label className="text-[var(--text-xs)] font-medium text-slate-600 mb-[var(--space-1)] block">Label <span className="text-red-500">*</span></label>
+                  <input
+                    type="text"
+                    value={editFieldData.field_label}
+                    onChange={(e) => setEditFieldData({...editFieldData, field_label: e.target.value})}
+                    className="w-full h-[var(--input-height)] px-[var(--space-4)] rounded-[var(--radius-lg)] border border-[var(--color-secondary-border)] bg-white text-[var(--text-sm)] text-slate-800 focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-top)]/20 focus:border-[var(--color-primary-top)] transition-colors duration-150"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="text-[var(--text-xs)] font-medium text-slate-600 mb-[var(--space-1)] block">Type</label>
+                  <select
+                    value={editFieldData.field_type}
+                    onChange={(e) => setEditFieldData({...editFieldData, field_type: e.target.value})}
+                    className="w-full h-[var(--input-height)] px-[var(--space-4)] rounded-[var(--radius-lg)] border border-[var(--color-secondary-border)] bg-white text-[var(--text-sm)] text-slate-800 focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-top)]/20 focus:border-[var(--color-primary-top)] transition-colors duration-150"
+                  >
+                    <option value="text">Text</option>
+                    <option value="number">Number</option>
+                    <option value="date">Date</option>
+                    <option value="formula">Formula</option>
+                    <option value="dropdown">Dropdown</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="text-[var(--text-xs)] font-medium text-slate-600 mb-[var(--space-1)] block">Source Type</label>
+                  <select
+                    value={editFieldData.source_type}
+                    onChange={(e) => setEditFieldData({...editFieldData, source_type: e.target.value})}
+                    className="w-full h-[var(--input-height)] px-[var(--space-4)] rounded-[var(--radius-lg)] border border-[var(--color-secondary-border)] bg-white text-[var(--text-sm)] text-slate-800 focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-top)]/20 focus:border-[var(--color-primary-top)] transition-colors duration-150"
+                  >
+                    <option value="manual">Manual</option>
+                    <option value="system">System</option>
+                    <option value="formula">Formula</option>
+                  </select>
+                </div>
+
+                {editFieldData.source_type === 'system' && (
+                  <div>
+                    <label className="text-[var(--text-xs)] font-medium text-slate-600 mb-[var(--space-1)] block">Source Key (Site)</label>
+                    <select
+                      value={editFieldData.source_key}
+                      onChange={(e) => setEditFieldData({...editFieldData, source_key: e.target.value})}
+                      className="w-full h-[var(--input-height)] px-[var(--space-4)] rounded-[var(--radius-lg)] border border-[var(--color-secondary-border)] bg-white text-[var(--text-sm)] text-slate-800 focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-top)]/20 focus:border-[var(--color-primary-top)] transition-colors duration-150"
+                    >
+                      <option value="">Select Site</option>
+                      {sitesList.map(site => (
+                        <option key={site.site_id} value={site.site_id}>
+                          {site.site_name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                {editFieldData.source_type === 'formula' && (
+                  <div>
+                    <label className="text-[var(--text-xs)] font-medium text-slate-600 mb-[var(--space-1)] block">Formula</label>
+                    <input
+                      type="text"
+                      value={editFieldData.formula}
+                      onChange={(e) => setEditFieldData({...editFieldData, formula: e.target.value})}
+                      placeholder="e.g. reading_from + reading_to"
+                      className="w-full h-[var(--input-height)] px-[var(--space-4)] rounded-[var(--radius-lg)] border border-[var(--color-secondary-border)] bg-white text-[var(--text-sm)] text-slate-800 focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-top)]/20 focus:border-[var(--color-primary-top)] transition-colors duration-150"
+                    />
+                  </div>
+                )}
+
+                <div className="md:col-span-2 flex flex-wrap items-center gap-[var(--space-4)] pt-[var(--space-2)] border-t border-[var(--color-layout-border)] mt-[var(--space-2)]">
+                  <div className="flex items-center gap-[var(--space-2)] bg-white px-[var(--space-3)] py-[var(--space-2)] rounded-[var(--radius-lg)] border border-[var(--color-secondary-border)] cursor-pointer" onClick={() => setEditFieldData({...editFieldData, is_required: !editFieldData.is_required})}>
+                    <input
+                      type="checkbox"
+                      id={`edit-req-${editingFieldId}`}
+                      checked={editFieldData.is_required}
+                      onChange={(e) => setEditFieldData({...editFieldData, is_required: e.target.checked})}
+                      className="w-4 h-4 text-[var(--color-primary-top)] rounded border-slate-300 focus:ring-[var(--color-primary-top)] cursor-pointer"
+                      onClick={(e) => e.stopPropagation()}
+                    />
+                    <label htmlFor={`edit-req-${editingFieldId}`} className="text-[var(--text-sm)] text-slate-700 cursor-pointer font-medium" onClick={(e) => e.preventDefault()}>
+                      Is Required?
+                    </label>
+                  </div>
+                  {(editFieldData.source_type === 'system' || editFieldData.source_type === 'formula') && (
+                    <div className="flex items-center gap-[var(--space-2)] bg-white px-[var(--space-3)] py-[var(--space-2)] rounded-[var(--radius-lg)] border border-[var(--color-secondary-border)] cursor-pointer" onClick={() => setEditFieldData({...editFieldData, is_read_only: !editFieldData.is_read_only})}>
+                      <input
+                        type="checkbox"
+                        id={`edit-ro-${editingFieldId}`}
+                        checked={editFieldData.is_read_only}
+                        onChange={(e) => setEditFieldData({...editFieldData, is_read_only: e.target.checked})}
+                        className="w-4 h-4 text-[var(--color-primary-top)] rounded border-slate-300 focus:ring-[var(--color-primary-top)] cursor-pointer"
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                      <label htmlFor={`edit-ro-${editingFieldId}`} className="text-[var(--text-sm)] text-slate-700 cursor-pointer font-medium" onClick={(e) => e.preventDefault()}>
+                        Is Read Only?
+                      </label>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+          )}
 
           {/* Add New Fields Section */}
+          {fieldsModalView === 'new' && (
           <div>
-            <h4 className="text-[var(--text-sm)] font-bold text-slate-800 mb-[var(--space-3)]">Add New Fields</h4>
+            <div className="flex items-center gap-[var(--space-3)] mb-[var(--space-3)]">
+              <button
+                type="button"
+                onClick={() => setFieldsModalView('existing')}
+                className="p-[var(--space-1.5)] text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-[var(--radius-md)] transition-colors"
+                title="Back to Existing Fields"
+              >
+                <ArrowLeft className="w-[var(--icon-md)] h-[var(--icon-md)]" />
+              </button>
+              <h4 className="text-[var(--text-sm)] font-bold text-slate-800">Add New Fields</h4>
+            </div>
             
             <div className="space-y-[var(--space-4)]">
               {newFieldsData.map((field, idx) => (
-                <div key={idx} className="p-[var(--space-3)] border border-[var(--color-layout-border)] rounded-[var(--radius-lg)] bg-slate-50 relative space-y-[var(--space-3)]">
-                  <button
-                    type="button"
-                    onClick={() => handleRemoveFieldRow(idx)}
-                    className="absolute top-[var(--space-2)] right-[var(--space-2)] text-slate-400 hover:text-red-500"
-                  >
-                    <Trash2 className="w-[var(--icon-sm)] h-[var(--icon-sm)]" />
-                  </button>
+                <div key={idx} className="p-[var(--card-padding)] border border-[var(--color-layout-border)] rounded-[var(--radius-xl)] bg-slate-50 relative space-y-[var(--space-4)] shadow-sm">
+                  <div className="flex items-center justify-between mb-[var(--space-2)]">
+                    <h5 className="text-[var(--text-sm)] font-bold text-slate-800 flex items-center gap-[var(--space-2)]">
+                      <Plus className="w-[var(--icon-sm)] h-[var(--icon-sm)] text-[var(--color-primary-top)]" />
+                      New Field {idx + 1}
+                    </h5>
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveFieldRow(idx)}
+                      className="p-[var(--space-1.5)] text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-[var(--radius-md)] transition-colors"
+                      title="Remove Field"
+                    >
+                      <Trash2 className="w-[var(--icon-sm)] h-[var(--icon-sm)]" />
+                    </button>
+                  </div>
                   
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-[var(--space-3)] pt-2">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-[var(--space-4)]">
                     <div>
                       <label className="text-[var(--text-xs)] font-medium text-slate-600 mb-[var(--space-1)] block">Label <span className="text-red-500">*</span></label>
                       <input
@@ -495,18 +859,8 @@ export default function WorksheetTemplatesPage() {
                         value={field.field_label}
                         onChange={(e) => handleNewFieldChange(idx, 'field_label', e.target.value)}
                         placeholder="e.g. Project Name"
-                        className="w-full h-[var(--input-height)] px-[var(--space-3)] rounded-[var(--radius-md)] border border-[var(--color-secondary-border)] bg-white text-[var(--text-sm)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-top)]/20 focus:border-[var(--color-primary-top)]"
+                        className="w-full h-[var(--input-height)] px-[var(--space-4)] rounded-[var(--radius-lg)] border border-[var(--color-secondary-border)] bg-white text-[var(--text-sm)] text-slate-800 focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-top)]/20 focus:border-[var(--color-primary-top)] transition-colors duration-150"
                         required
-                      />
-                    </div>
-                    <div>
-                      <label className="text-[var(--text-xs)] font-medium text-slate-600 mb-[var(--space-1)] block">Key</label>
-                      <input
-                        type="text"
-                        value={field.field_key}
-                        onChange={(e) => handleNewFieldChange(idx, 'field_key', e.target.value)}
-                        placeholder="e.g. project_name"
-                        className="w-full h-[var(--input-height)] px-[var(--space-3)] rounded-[var(--radius-md)] border border-[var(--color-secondary-border)] bg-white text-[var(--text-sm)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-top)]/20 focus:border-[var(--color-primary-top)] font-mono text-xs"
                       />
                     </div>
                     <div>
@@ -514,7 +868,7 @@ export default function WorksheetTemplatesPage() {
                       <select
                         value={field.field_type}
                         onChange={(e) => handleNewFieldChange(idx, 'field_type', e.target.value)}
-                        className="w-full h-[var(--input-height)] px-[var(--space-3)] rounded-[var(--radius-md)] border border-[var(--color-secondary-border)] bg-white text-[var(--text-sm)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-top)]/20 focus:border-[var(--color-primary-top)]"
+                        className="w-full h-[var(--input-height)] px-[var(--space-4)] rounded-[var(--radius-lg)] border border-[var(--color-secondary-border)] bg-white text-[var(--text-sm)] text-slate-800 focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-top)]/20 focus:border-[var(--color-primary-top)] transition-colors duration-150"
                       >
                         <option value="text">Text</option>
                         <option value="number">Number</option>
@@ -523,30 +877,79 @@ export default function WorksheetTemplatesPage() {
                         <option value="dropdown">Dropdown</option>
                       </select>
                     </div>
-                    <div className="flex items-center gap-[var(--space-2)] pt-6">
-                      <input
-                        type="checkbox"
-                        id={`req-${idx}`}
-                        checked={field.is_required}
-                        onChange={(e) => handleNewFieldChange(idx, 'is_required', e.target.checked)}
-                        className="w-4 h-4 text-[var(--color-primary-top)] rounded border-slate-300 focus:ring-[var(--color-primary-top)]"
-                      />
-                      <label htmlFor={`req-${idx}`} className="text-[var(--text-sm)] text-slate-700 cursor-pointer">
-                        Is Required?
-                      </label>
+                    <div>
+                      <label className="text-[var(--text-xs)] font-medium text-slate-600 mb-[var(--space-1)] block">Source Type</label>
+                      <select
+                        value={field.source_type}
+                        onChange={(e) => handleNewFieldChange(idx, 'source_type', e.target.value)}
+                        className="w-full h-[var(--input-height)] px-[var(--space-4)] rounded-[var(--radius-lg)] border border-[var(--color-secondary-border)] bg-white text-[var(--text-sm)] text-slate-800 focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-top)]/20 focus:border-[var(--color-primary-top)] transition-colors duration-150"
+                      >
+                        <option value="manual">Manual</option>
+                        <option value="system">System</option>
+                        <option value="formula">Formula</option>
+                      </select>
                     </div>
-                    <div className="md:col-span-2">
-                      <label className="text-[var(--text-xs)] font-medium text-slate-600 mb-[var(--space-1)] block flex justify-between">
-                        <span>Configuration (JSON)</span>
-                        <span className="text-slate-400 font-normal">Optional</span>
-                      </label>
-                      <textarea
-                        value={field.configuration}
-                        onChange={(e) => handleNewFieldChange(idx, 'configuration', e.target.value)}
-                        placeholder='{"source_type": "system", "is_read_only": true}'
-                        rows={2}
-                        className="w-full py-[var(--space-2)] px-[var(--space-3)] rounded-[var(--radius-md)] border border-[var(--color-secondary-border)] bg-white text-[var(--text-sm)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-top)]/20 focus:border-[var(--color-primary-top)] font-mono text-xs resize-none"
-                      />
+                    
+                    {field.source_type === 'system' && (
+                      <div>
+                        <label className="text-[var(--text-xs)] font-medium text-slate-600 mb-[var(--space-1)] block">Source Key (Site)</label>
+                        <select
+                          value={field.source_key}
+                          onChange={(e) => handleNewFieldChange(idx, 'source_key', e.target.value)}
+                          className="w-full h-[var(--input-height)] px-[var(--space-4)] rounded-[var(--radius-lg)] border border-[var(--color-secondary-border)] bg-white text-[var(--text-sm)] text-slate-800 focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-top)]/20 focus:border-[var(--color-primary-top)] transition-colors duration-150"
+                        >
+                          <option value="">Select Site</option>
+                          {sitesList.map(site => (
+                            <option key={site.site_id} value={site.site_id}>
+                              {site.site_name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
+
+                    {field.source_type === 'formula' && (
+                      <div>
+                        <label className="text-[var(--text-xs)] font-medium text-slate-600 mb-[var(--space-1)] block">Formula</label>
+                        <input
+                          type="text"
+                          value={field.formula}
+                          onChange={(e) => handleNewFieldChange(idx, 'formula', e.target.value)}
+                          placeholder="e.g. reading_from + reading_to"
+                          className="w-full h-[var(--input-height)] px-[var(--space-4)] rounded-[var(--radius-lg)] border border-[var(--color-secondary-border)] bg-white text-[var(--text-sm)] text-slate-800 focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-top)]/20 focus:border-[var(--color-primary-top)] transition-colors duration-150"
+                        />
+                      </div>
+                    )}
+
+                    <div className="md:col-span-2 flex flex-wrap items-center gap-[var(--space-4)] pt-[var(--space-2)] border-t border-[var(--color-layout-border)] mt-[var(--space-2)]">
+                      <div className="flex items-center gap-[var(--space-2)] bg-white px-[var(--space-3)] py-[var(--space-2)] rounded-[var(--radius-lg)] border border-[var(--color-secondary-border)] cursor-pointer" onClick={() => handleNewFieldChange(idx, 'is_required', !field.is_required)}>
+                        <input
+                          type="checkbox"
+                          id={`req-${idx}`}
+                          checked={field.is_required}
+                          onChange={(e) => handleNewFieldChange(idx, 'is_required', e.target.checked)}
+                          className="w-4 h-4 text-[var(--color-primary-top)] rounded border-slate-300 focus:ring-[var(--color-primary-top)] cursor-pointer"
+                          onClick={(e) => e.stopPropagation()}
+                        />
+                        <label htmlFor={`req-${idx}`} className="text-[var(--text-sm)] text-slate-700 cursor-pointer font-medium" onClick={(e) => e.preventDefault()}>
+                          Is Required?
+                        </label>
+                      </div>
+                      {(field.source_type === 'system' || field.source_type === 'formula') && (
+                        <div className="flex items-center gap-[var(--space-2)] bg-white px-[var(--space-3)] py-[var(--space-2)] rounded-[var(--radius-lg)] border border-[var(--color-secondary-border)] cursor-pointer" onClick={() => handleNewFieldChange(idx, 'is_read_only', !field.is_read_only)}>
+                          <input
+                            type="checkbox"
+                            id={`read-only-${idx}`}
+                            checked={field.is_read_only}
+                            onChange={(e) => handleNewFieldChange(idx, 'is_read_only', e.target.checked)}
+                            className="w-4 h-4 text-[var(--color-primary-top)] rounded border-slate-300 focus:ring-[var(--color-primary-top)] cursor-pointer"
+                            onClick={(e) => e.stopPropagation()}
+                          />
+                          <label htmlFor={`read-only-${idx}`} className="text-[var(--text-sm)] text-slate-700 cursor-pointer font-medium" onClick={(e) => e.preventDefault()}>
+                            Is Read Only?
+                          </label>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -562,8 +965,52 @@ export default function WorksheetTemplatesPage() {
               </button>
             </div>
           </div>
+          )}
         </div>
-      </SideDrawer>
+      </div>
+
+            {/* Modal Footer */}
+            <div className="flex items-center justify-end gap-[var(--space-3)] p-[var(--space-4)] border-t border-[var(--color-layout-border)] bg-slate-50/80 backdrop-blur-md">
+              <button
+                type="button"
+                onClick={() => {
+                  if (fieldsModalView === 'new') setFieldsModalView('existing');
+                  else if (fieldsModalView === 'edit') handleCancelEdit();
+                  else setShowFieldsDrawer(false);
+                }}
+                className="px-[var(--space-5)] h-[var(--btn-height-md)] rounded-[var(--radius-lg)] text-[var(--text-sm)] font-medium text-slate-700 bg-white border border-[var(--color-secondary-border)] hover:bg-slate-50 transition-colors shadow-sm"
+              >
+                {fieldsModalView === 'existing' ? 'Close' : 'Cancel'}
+              </button>
+              
+              {fieldsModalView === 'new' && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    handleSaveFields();
+                  }}
+                  disabled={submitting}
+                  className="btn-3d-primary px-[var(--space-5)] h-[var(--btn-height-md)] rounded-[var(--radius-lg)] text-[var(--text-sm)] font-medium flex items-center gap-[var(--space-2)]"
+                >
+                  {submitting ? 'Saving...' : 'Save New Fields'}
+                </button>
+              )}
+
+              {fieldsModalView === 'edit' && (
+                <button
+                  type="button"
+                  onClick={() => handleUpdateExistingField(editingFieldId)}
+                  disabled={submitting}
+                  className="btn-3d-primary px-[var(--space-5)] h-[var(--btn-height-md)] rounded-[var(--radius-lg)] text-[var(--text-sm)] font-medium flex items-center gap-[var(--space-2)]"
+                >
+                  {submitting ? 'Saving...' : 'Save Changes'}
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </DashboardLayout>
   );
 }
