@@ -19,9 +19,12 @@ export default function RoleRedirect() {
         navigate("/hr/dashboard", { replace: true });
         break;
       case "employee":
-      case "engineer":
       case "site supervisor":
         navigate("/employee/dashboard", { replace: true });
+        break;
+      case "engineer":
+      case "site engineer":
+        navigate("/engineer/dashboard", { replace: true });
         break;
       case "senior site supervisor":
         navigate("/supervisor/dashboard", { replace: true });

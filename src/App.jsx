@@ -25,6 +25,9 @@ import AttendancePage from "@/features/hrms/AttendancePage";
 import EmployeeDashboard from "@/features/hrms/EmployeeDashboard";
 
 import SeniorSiteSupervisorDashboard from "@/features/supervisor/SeniorSiteSupervisorDashboard";
+import SiteEngineerDashboard from "@/features/engineer/SiteEngineerDashboard";
+import EngineerPurchaseRequestsPage from "@/features/engineer/EngineerPurchaseRequestsPage";
+import EngineerSheetEntryPage from "@/features/engineer/EngineerSheetEntryPage";
 
 import ClientDashboard from "@/features/client/ClientDashboard";
 import StoreDashboard from "@/features/store/StoreDashboard";
@@ -81,7 +84,10 @@ export default function App() {
         <Route path="/employee/dashboard" element={<ProtectedRoute><EmployeeDashboard /></ProtectedRoute>} />
         <Route path="/employee/attendance" element={<ProtectedRoute><AttendancePage /></ProtectedRoute>} />
         
-        {/* Supervisor Routes */}
+        {/* Supervisor & Engineer Routes */}
+        <Route path="/engineer/dashboard" element={<ProtectedRoute><SiteEngineerDashboard /></ProtectedRoute>} />
+        <Route path="/engineer/purchase-requests" element={<ProtectedRoute><EngineerPurchaseRequestsPage /></ProtectedRoute>} />
+        <Route path="/engineer/sheet-entry" element={<ProtectedRoute><EngineerSheetEntryPage /></ProtectedRoute>} />
         <Route path="/supervisor/dashboard" element={<ProtectedRoute><SeniorSiteSupervisorDashboard /></ProtectedRoute>} />
 
         {/* 4. Client Portal Routes */}

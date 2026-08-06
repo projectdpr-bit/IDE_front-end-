@@ -180,5 +180,33 @@ export const menu = {
       name: "My Attendance",
       path: "/employee/attendance",
     }
+  ],
+  "site engineer": [
+    {
+      name: "Dashboard",
+      path: "/engineer/dashboard",
+    },
+    {
+      name: "Purchase Requests",
+      path: "/engineer/purchase-requests",
+    },
+    {
+      name: "Sheet Entry",
+      path: "/engineer/sheet-entry",
+    }
+  ],
+  "engineer": [
+    {
+      name: "Dashboard",
+      path: "/engineer/dashboard",
+    },
+    {
+      name: "Purchase Requests",
+      path: "/engineer/purchase-requests",
+    },
+    {
+      name: "Sheet Entry",
+      path: "/engineer/sheet-entry",
+    }
   ]
 };

@@ -108,17 +108,19 @@ export default function PurchaseRequestsPage() {
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse whitespace-nowrap">
                 <thead>
-                  <tr className="bg-slate-50/80 border-b border-slate-100 text-xs font-bold uppercase tracking-wider text-slate-500">
-                    <th className="py-3.5 px-5">Project</th>
+                  <tr className="bg-slate-50/80 border-b border-slate-100 text-[var(--text-xs)] font-bold uppercase tracking-wider text-slate-500">
+                    <th className="py-3.5 px-5">PR No.</th>
+                    <th className="py-3.5 px-5">Project & Site</th>
                     <th className="py-3.5 px-5">Requested By</th>
                     <th className="py-3.5 px-5">Requested At</th>
+                    <th className="py-3.5 px-5 text-center">Status</th>
                     <th className="py-3.5 px-5 text-right">Items</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 text-xs font-medium text-slate-700">
                   {filteredRequests.length === 0 ? (
                     <tr>
-                      <td colSpan="4" className="py-8 text-center text-slate-500">
+                      <td colSpan="6" className="py-8 text-center text-slate-500">
                         No purchase requests found.
                       </td>
                     </tr>
@@ -127,14 +129,30 @@ export default function PurchaseRequestsPage() {
                       <React.Fragment key={request.pr_id}>
                         <tr className="hover:bg-slate-50/60 transition-colors">
                           <td className="py-4 px-5">
+                            <p className="font-semibold text-slate-900">{request.pr_number}</p>
+                          </td>
+                          <td className="py-4 px-5">
                             <p className="font-semibold text-slate-900">{request.project_name}</p>
-                            {request.project_code && <p className="text-[10px] text-slate-500 font-mono">{request.project_code}</p>}
+                            <p className="text-[10px] text-slate-500 font-mono">
+                              {request.project_code} {request.site_name ? `| ${request.site_name}` : ""}
+                            </p>
                           </td>
                           <td className="py-4 px-5">
                             <p className="font-semibold text-slate-900">{request.requested_by_name}</p>
+                            <p className="text-[10px] text-slate-500 font-mono">{request.requested_by_code}</p>
                           </td>
                           <td className="py-4 px-5 text-slate-500">
                             {request.requested_at ? new Date(request.requested_at).toLocaleString(undefined, { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : "N/A"}
+                          </td>
+                          <td className="py-4 px-5 text-center">
+                            <span className={`inline-flex items-center px-[var(--space-3)] py-[var(--space-1)] rounded-[var(--radius-full)] text-[var(--text-2xs)] font-semibold uppercase tracking-wide ${
+                              request.status === 'pending' ? 'bg-yellow-100 text-yellow-700' :
+                              request.status === 'approved' ? 'bg-green-100 text-green-700' :
+                              request.status === 'rejected' ? 'bg-red-100 text-red-700' :
+                              'bg-slate-100 text-slate-700'
+                            }`}>
+                              {request.status}
+                            </span>
                           </td>
                           <td className="py-4 px-5 text-right">
                             <button
@@ -154,7 +172,7 @@ export default function PurchaseRequestsPage() {
                         {/* Expanded Items Row */}
                         {expandedRows.has(request.pr_id) && request.items && request.items.length > 0 && (
                           <tr className="bg-slate-50/50">
-                            <td colSpan="4" className="py-4 px-5">
+                            <td colSpan="6" className="py-4 px-5">
                               <div className="rounded-xl border border-slate-200 bg-white overflow-hidden shadow-sm">
                                 <table className="w-full text-left">
                                   <thead>
@@ -166,14 +184,17 @@ export default function PurchaseRequestsPage() {
                                     </tr>
                                   </thead>
                                   <tbody className="divide-y divide-slate-100">
-                                    {request.items.map((item) => (
-                                      <tr key={item.pr_item_id} className="text-xs">
-                                        <td className="py-2.5 px-4 font-semibold text-slate-800">{item.material_name}</td>
-                                        <td className="py-2.5 px-4 font-bold text-slate-900">{item.quantity}</td>
-                                        <td className="py-2.5 px-4 text-slate-500">{item.unit}</td>
-                                        <td className="py-2.5 px-4 text-slate-500">{item.remarks || "-"}</td>
-                                      </tr>
-                                    ))}
+                                      {request.items.map((item) => (
+                                        <tr key={item.pr_item_id} className="text-xs">
+                                          <td className="py-2.5 px-4 font-semibold text-slate-800">
+                                            {item.name || item.boq_item_name || "Unknown Item"}
+                                            {item.item_code && <span className="ml-2 text-[10px] text-slate-500 font-mono">({item.item_code})</span>}
+                                          </td>
+                                          <td className="py-2.5 px-4 font-bold text-slate-900">{item.quantity}</td>
+                                          <td className="py-2.5 px-4 text-slate-500">{item.unit || "-"}</td>
+                                          <td className="py-2.5 px-4 text-slate-500">{item.remarks || "-"}</td>
+                                        </tr>
+                                      ))}
                                   </tbody>
                                 </table>
                               </div>

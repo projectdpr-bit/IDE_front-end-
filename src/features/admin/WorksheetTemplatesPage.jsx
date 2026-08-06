@@ -605,6 +605,10 @@ export default function WorksheetTemplatesPage() {
 
     setSubmitting(true);
     try {
+      const maxOrderIndex = existingFields.length > 0 
+        ? Math.max(...existingFields.map(f => f.order_index || 0)) 
+        : 0;
+
       const payload = {
         fields: validFields.map((f, idx) => {
           let parsedConfig = {};
@@ -624,12 +628,35 @@ export default function WorksheetTemplatesPage() {
             parsedConfig = { source_type: 'manual' };
           }
           
+          let baseKey = f.field_key || f.field_label.toLowerCase().replace(/[^a-z0-9]/g, '_');
+          let uniqueKey = baseKey;
+          let counter = 1;
+          
+          // Ensure field_key is unique against existing fields and already processed new fields
+          const isKeyDuplicate = (key, currentIdx) => {
+            if (existingFields.some(ef => ef.field_key === key)) return true;
+            for (let i = 0; i < currentIdx; i++) {
+               const prevField = validFields[i];
+               const prevKey = prevField.field_key || prevField.field_label.toLowerCase().replace(/[^a-z0-9]/g, '_');
+               if (prevKey === key || `${prevKey}_${counter}` === key) return true; // Approximation for simplicity
+            }
+            return false;
+          };
+
+          while (existingFields.some(ef => ef.field_key === uniqueKey) || validFields.slice(0, idx).some((prevF, i) => {
+             const prevK = prevF.field_key || prevF.field_label.toLowerCase().replace(/[^a-z0-9]/g, '_');
+             return prevK === uniqueKey || `${prevK}_${counter}` === uniqueKey;
+          })) {
+             uniqueKey = `${baseKey}_${counter}`;
+             counter++;
+          }
+
           return {
             field_label: f.field_label,
-            field_key: f.field_key || f.field_label.toLowerCase().replace(/[^a-z0-9]/g, '_'),
+            field_key: uniqueKey,
             field_type: f.field_type,
             is_required: f.is_required,
-            order_index: existingFields.length + idx + 1,
+            order_index: maxOrderIndex + idx + 1,
             configuration: parsedConfig
           };
         })
