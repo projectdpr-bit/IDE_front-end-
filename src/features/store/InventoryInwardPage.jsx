@@ -1,19 +1,21 @@
 import React, { useState, useEffect } from "react";
 import DashboardLayout from "@/layouts/DashboardLayout";
-import { ArrowDownLeft, Search, Loader2, ChevronDown, ChevronUp } from "lucide-react";
+import { ArrowDownLeft, Search, Loader2, ChevronDown, ChevronUp, Plus } from "lucide-react";
 import apiClient from "@/lib/axios";
-import { STORE_STOCK_INWARD_API } from "@/utils/ApiHelper";
+import { GET_STORE_STOCK_INWARD_MANUAL_API } from "@/utils/ApiHelper";
+import ManualInwardPanel from "./components/ManualInwardPanel";
 
 export default function InventoryInwardPage() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [inwardLogs, setInwardLogs] = useState([]);
   const [expandedRows, setExpandedRows] = useState(new Set());
+  const [isManualPanelOpen, setIsManualPanelOpen] = useState(false);
 
   const fetchInwardLogs = async () => {
     try {
       setLoading(true);
-      const res = await apiClient.get(STORE_STOCK_INWARD_API);
+      const res = await apiClient.get(GET_STORE_STOCK_INWARD_MANUAL_API);
       if (res.data?.success && Array.isArray(res.data.data)) {
         setInwardLogs(res.data.data);
       } else {
@@ -70,6 +72,15 @@ export default function InventoryInwardPage() {
                 History of all stock inward entries received at stores
               </p>
             </div>
+          </div>
+          <div className="flex flex-wrap gap-[var(--space-3)]">
+            <button 
+              onClick={() => setIsManualPanelOpen(true)}
+              className="btn-3d-primary px-[var(--space-5)] h-[var(--btn-height-md)] rounded-[var(--radius-lg)] text-[var(--text-sm)] font-medium flex items-center gap-[var(--space-2)] cursor-pointer"
+            >
+              <Plus className="w-[var(--icon-sm)] h-[var(--icon-sm)]" />
+              New Inward
+            </button>
           </div>
         </div>
 
@@ -249,6 +260,15 @@ export default function InventoryInwardPage() {
         </div>
 
       </div>
+      
+      {/* Manual Inward Side Panel */}
+      <ManualInwardPanel 
+        isOpen={isManualPanelOpen} 
+        onClose={() => setIsManualPanelOpen(false)} 
+        onSuccess={() => {
+          fetchInwardLogs();
+        }}
+      />
     </DashboardLayout>
   );
 }

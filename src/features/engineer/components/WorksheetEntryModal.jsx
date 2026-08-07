@@ -35,11 +35,45 @@ function evaluateFormula(formulaStr, formData) {
 }
 
 // ─── Single Dynamic Field Renderer ───────────────────────────────────────────
-function DynamicField({ field, value, onChange }) {
+function DynamicField({ field, value, onChange, dynamicOptions }) {
   const { field_label, field_key, field_type, is_required, configuration } = field;
 
   const inputBase =
     "w-full h-[var(--input-height)] px-[var(--space-4)] rounded-[var(--radius-lg)] border border-[var(--color-secondary-border)] bg-white text-[var(--text-sm)] text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-top)]/20 focus:border-[var(--color-primary-top)] transition-colors duration-150 disabled:bg-slate-50 disabled:text-slate-400 disabled:cursor-not-allowed";
+
+  let dropdownOptions = [];
+  if (field_type === "dropdown") {
+    const lowerKey = field_key.toLowerCase();
+    if (lowerKey === 'project_id' || lowerKey === 'project') {
+      dropdownOptions = (dynamicOptions?.projects || []).map(p => ({ label: p.project_name, value: String(p.project_id) }));
+    } else if (lowerKey === 'sub_division' || lowerKey === 'sub_divisions') {
+      dropdownOptions = (dynamicOptions?.sub_divisions || []).map(s => ({ label: s, value: s }));
+    } else if (lowerKey === 'feeder' || lowerKey === 'feeders') {
+      dropdownOptions = (dynamicOptions?.feeders || []).map(f => ({ label: f, value: f }));
+    } else if (lowerKey === 'location' || lowerKey === 'location_from' || lowerKey === 'location_to') {
+      dropdownOptions = (dynamicOptions?.locations || []).map(l => ({ label: l.location, value: l.location }));
+    } else {
+      dropdownOptions = (configuration?.options || []).map(opt => ({ label: opt, value: opt }));
+    }
+  }
+
+  const isGPS = 
+    (field_key || '').toLowerCase().includes('gps') || 
+    (field_label || '').toLowerCase().includes('gps') || 
+    (((field_key || '').toLowerCase() === 'location' || (field_label || '').toLowerCase() === 'location') && field_type !== 'dropdown');
+
+  const isTimestamp = 
+    (field_key || '').toLowerCase().includes('timestamp') || 
+    (field_key || '').toLowerCase().includes('time_stamp') || 
+    (field_key || '').toLowerCase().includes('stamp_time') || 
+    (field_label || '').toLowerCase().includes('timestamp') || 
+    (field_label || '').toLowerCase().includes('time stamp') || 
+    (field_label || '').toLowerCase().includes('stamp time');
+
+  // Hide GPS and Timestamp fields from the frontend completely
+  if (isGPS || isTimestamp) {
+    return null;
+  }
 
   return (
     <div className="flex flex-col gap-[var(--space-1)]">
@@ -101,9 +135,9 @@ function DynamicField({ field, value, onChange }) {
           className={inputBase}
         >
           <option value="">Select {field_label}</option>
-          {(configuration?.options || []).map((opt, i) => (
-            <option key={i} value={opt}>
-              {opt}
+          {dropdownOptions.map((opt, i) => (
+            <option key={i} value={opt.value}>
+              {opt.label}
             </option>
           ))}
         </select>
@@ -134,6 +168,16 @@ export default function WorksheetEntryModal({ isOpen, onClose, template, onSucce
   const [submitError, setSubmitError] = useState(null);
   const [submitSuccess, setSubmitSuccess] = useState(null);
 
+  const [sites, setSites] = useState([]);
+  const [selectedSiteId, setSelectedSiteId] = useState("");
+
+  const [dynamicOptions, setDynamicOptions] = useState({
+    projects: [],
+    sub_divisions: [],
+    feeders: [],
+    locations: []
+  });
+
   const baseUrl =
     import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_PUBLIC_URL || "";
 
@@ -146,6 +190,13 @@ export default function WorksheetEntryModal({ isOpen, onClose, template, onSucce
     setFieldsError(null);
     setSubmitError(null);
     setSubmitSuccess(null);
+    setSelectedSiteId("");
+    setDynamicOptions({
+      projects: [],
+      sub_divisions: [],
+      feeders: [],
+      locations: []
+    });
 
     const fetchFields = async () => {
       try {
@@ -175,13 +226,120 @@ export default function WorksheetEntryModal({ isOpen, onClose, template, onSucce
     };
 
     fetchFields();
-  }, [isOpen, template?.template_id]);
+  }, [isOpen, template?.template_id, baseUrl]);
+
+  // Fetch Sites for top-level dropdown
+  useEffect(() => {
+    if (!isOpen) return;
+    const fetchSites = async () => {
+      try {
+        const res = await apiClient.get(`${baseUrl}engineer/sites`);
+        if (res.data?.success) {
+          setSites(res.data.data || []);
+        }
+      } catch (err) {
+        console.error("Failed to fetch sites", err);
+      }
+    };
+    fetchSites();
+  }, [isOpen, baseUrl]);
+
+  // Fetch dynamic cascading dropdown options
+  useEffect(() => {
+    if (!isOpen) return;
+    const fetchProjects = async () => {
+      try {
+        const res = await apiClient.get(`${baseUrl}engineer/work-sheet-options?field=projects`);
+        if (res.data?.success) {
+          setDynamicOptions(prev => ({ ...prev, projects: res.data.data }));
+        }
+      } catch (err) {
+        console.error("Failed to fetch projects", err);
+      }
+    };
+    fetchProjects();
+  }, [isOpen, baseUrl]);
+
+  const projectId = formData['project_id'] || formData['project'];
+  useEffect(() => {
+    if (!projectId) {
+      setDynamicOptions(prev => ({ ...prev, sub_divisions: [] }));
+      return;
+    }
+    const fetchSubDivisions = async () => {
+      try {
+        const res = await apiClient.get(`${baseUrl}engineer/work-sheet-options?field=sub_divisions&project_id=${projectId}`);
+        if (res.data?.success) {
+          setDynamicOptions(prev => ({ ...prev, sub_divisions: res.data.data }));
+        }
+      } catch (err) {
+        console.error("Failed to fetch sub divisions", err);
+      }
+    };
+    fetchSubDivisions();
+  }, [projectId, baseUrl]);
+
+  const subDivision = formData['sub_division'] || formData['sub_divisions'];
+  useEffect(() => {
+    if (!subDivision) {
+      setDynamicOptions(prev => ({ ...prev, feeders: [] }));
+      return;
+    }
+    const fetchFeeders = async () => {
+      try {
+        const res = await apiClient.get(`${baseUrl}engineer/work-sheet-options?field=feeders&sub_division=${encodeURIComponent(subDivision)}`);
+        if (res.data?.success) {
+          setDynamicOptions(prev => ({ ...prev, feeders: res.data.data }));
+        }
+      } catch (err) {
+        console.error("Failed to fetch feeders", err);
+      }
+    };
+    fetchFeeders();
+  }, [subDivision, baseUrl]);
+
+  const feeder = formData['feeder'] || formData['feeders'];
+  useEffect(() => {
+    if (!feeder) {
+      setDynamicOptions(prev => ({ ...prev, locations: [] }));
+      return;
+    }
+    const fetchLocations = async () => {
+      try {
+        const res = await apiClient.get(`${baseUrl}engineer/work-sheet-options?field=locations&feeder=${encodeURIComponent(feeder)}`);
+        if (res.data?.success) {
+          setDynamicOptions(prev => ({ ...prev, locations: res.data.data }));
+        }
+      } catch (err) {
+        console.error("Failed to fetch locations", err);
+      }
+    };
+    fetchLocations();
+  }, [feeder, baseUrl]);
 
   // Handle input change and recalculate formula fields in real-time
   const handleInputChange = useCallback(
     (fieldKey, value) => {
       setFormData((prev) => {
         const updated = { ...prev, [fieldKey]: value };
+        
+        // Reset dependent cascading fields
+        const lowerKey = fieldKey.toLowerCase();
+        fields.forEach(f => {
+            const k = f.field_key.toLowerCase();
+            const isSubDiv = k === 'sub_division' || k === 'sub_divisions';
+            const isFeeder = k === 'feeder' || k === 'feeders';
+            const isLoc = k === 'location' || k === 'location_from' || k === 'location_to';
+            
+            if (lowerKey === 'project_id' || lowerKey === 'project') {
+                if (isSubDiv || isFeeder || isLoc) updated[f.field_key] = '';
+            } else if (lowerKey === 'sub_division' || lowerKey === 'sub_divisions') {
+                if (isFeeder || isLoc) updated[f.field_key] = '';
+            } else if (lowerKey === 'feeder' || lowerKey === 'feeders') {
+                if (isLoc) updated[f.field_key] = '';
+            }
+        });
+
         fields.forEach((f) => {
           if (f.field_type === "formula" && f.configuration?.formula) {
             updated[f.field_key] = evaluateFormula(f.configuration.formula, updated);
@@ -201,12 +359,90 @@ export default function WorksheetEntryModal({ isOpen, onClose, template, onSucce
     setSubmitSuccess(null);
 
     try {
+      // Fetch Geolocation (Strictly require current location)
+      let lat = null;
+      let lng = null;
+      try {
+        const position = await new Promise((resolve, reject) => {
+          if (!navigator.geolocation) {
+            reject(new Error("Geolocation is not supported by your browser."));
+            return;
+          }
+          navigator.geolocation.getCurrentPosition(resolve, reject, { 
+            enableHighAccuracy: true, 
+            timeout: 15000, 
+            maximumAge: 0 
+          });
+        });
+        if (position) {
+          lat = position.coords.latitude;
+          lng = position.coords.longitude;
+        }
+      } catch (geoErr) {
+        console.warn("Geolocation fetching failed or was denied.", geoErr);
+        setSubmitError("Failed to get current location. Please enable GPS/Location services to submit this worksheet.");
+        setSubmitting(false);
+        return; // Stop submission if location is missing
+      }
+
+      // Ensure numeric values in formData are actual numbers where appropriate
+      const parsedData = { ...formData };
+      
+      // Auto-fill hidden fields (GPS and Timestamp)
+      fields.forEach(f => {
+        const k = (f.field_key || '').toLowerCase();
+        const l = (f.field_label || '').toLowerCase();
+        
+        const isGPS = k.includes('gps') || l.includes('gps') || ((k === 'location' || l === 'location') && f.field_type !== 'dropdown');
+        if (isGPS) {
+          parsedData[f.field_key] = { latitude: lat, longitude: lng };
+        }
+
+        const isTimestamp = k.includes('timestamp') || k.includes('time_stamp') || k.includes('stamp_time') || 
+                            l.includes('timestamp') || l.includes('time stamp') || l.includes('stamp time');
+        if (isTimestamp) {
+          if (f.field_type === 'date') {
+            parsedData[f.field_key] = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+          } else {
+            parsedData[f.field_key] = new Date().toISOString(); // Full ISO String
+          }
+        }
+      });
+
+      Object.keys(parsedData).forEach(key => {
+        const val = parsedData[key];
+        if (typeof val !== 'object' && !isNaN(val) && val !== '' && val !== null) {
+          parsedData[key] = Number(val);
+        }
+      });
+
+      const empId = user?.employee_id || user?.employeeId || user?.id || user?.userId || 0;
+      const sId = user?.site_id || user?.siteId || user?.assigned_site_id || user?.assignedSiteId || 0;
+
+      // Extract raw user from localStorage just in case useAuthStore format masks the original keys
+      let rawUser = null;
+      try {
+        const authData = localStorage.getItem('auth-storage'); // Update this key if different
+        if (authData) {
+          const parsedAuth = JSON.parse(authData);
+          rawUser = parsedAuth?.state?.user || parsedAuth?.user || parsedAuth;
+        }
+      } catch(e) {}
+      
+      const finalEmpId = Number(empId) !== 0 ? Number(empId) : Number(rawUser?.employee_id || rawUser?.id || 0);
+      const finalSiteId = Number(sId) !== 0 ? Number(sId) : Number(rawUser?.site_id || rawUser?.assigned_site_id || 0);
+
       const payload = {
         template_id: Number(template.template_id),
-        site_id: Number(user?.site_id || user?.assigned_site_id || 0),
+        site_id: selectedSiteId ? Number(selectedSiteId) : finalSiteId,
+        employee_id: finalEmpId,
+        latitude: lat,
+        longitude: lng,
         recorded_at: new Date().toISOString(),
-        data: formData,
+        data: parsedData,
       };
+      
+      console.log("Submitting Worksheet Payload:", payload);
 
       const res = await apiClient.post(
         `${baseUrl}engineer/work-sheet-entries`,
@@ -224,9 +460,20 @@ export default function WorksheetEntryModal({ isOpen, onClose, template, onSucce
         setSubmitError(res.data?.message || "Submission failed.");
       }
     } catch (err) {
-      setSubmitError(
-        err?.response?.data?.message || err.message || "Submission failed."
-      );
+      console.error("API Submission Error:", err.response?.data || err);
+      let errMsg = err?.response?.data?.message || err.message || "Submission failed.";
+      
+      // Attempt to extract validation errors if provided by the backend
+      const validationErrors = err?.response?.data?.errors;
+      if (validationErrors) {
+        if (Array.isArray(validationErrors)) {
+          errMsg += " - " + validationErrors.map(e => e.msg || e.message || JSON.stringify(e)).join(", ");
+        } else if (typeof validationErrors === 'object') {
+          errMsg += " - " + JSON.stringify(validationErrors);
+        }
+      }
+      
+      setSubmitError(errMsg);
     } finally {
       setSubmitting(false);
     }
@@ -320,6 +567,28 @@ export default function WorksheetEntryModal({ isOpen, onClose, template, onSucce
           {!loadingFields && !fieldsError && fields.length > 0 && (
             <form id="worksheet-entry-form" onSubmit={handleSubmit}>
               <div className="grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-2 gap-[var(--space-4)] sm:gap-[var(--space-5)]">
+                
+                {/* Site Selection Dropdown (Root level requirement) */}
+                <div className="flex flex-col gap-[var(--space-1)] sm:col-span-2">
+                  <label className="text-[var(--text-xs)] font-semibold text-slate-600 flex items-center gap-1">
+                    Select Site <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    required
+                    value={selectedSiteId}
+                    onChange={(e) => setSelectedSiteId(e.target.value)}
+                    className="w-full h-[var(--input-height)] px-[var(--space-4)] rounded-[var(--radius-lg)] border border-[var(--color-secondary-border)] bg-white text-[var(--text-sm)] text-slate-800 focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-top)]/20 focus:border-[var(--color-primary-top)] transition-colors duration-150"
+                  >
+                    <option value="">Select a site...</option>
+                    {sites.map((s) => (
+                      <option key={s.id || s.site_id} value={s.id || s.site_id}>
+                        {s.site_name || s.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Dynamic Fields */}
                 {fields.map((field) => (
                   <div
                     key={field.field_id ?? field.field_key}
@@ -329,6 +598,7 @@ export default function WorksheetEntryModal({ isOpen, onClose, template, onSucce
                       field={field}
                       value={formData[field.field_key]}
                       onChange={handleInputChange}
+                      dynamicOptions={dynamicOptions}
                     />
                   </div>
                 ))}
