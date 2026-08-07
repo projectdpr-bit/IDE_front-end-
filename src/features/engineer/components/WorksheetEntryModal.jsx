@@ -18,14 +18,19 @@ import { useAuthStore } from "@/store/useAuthStore";
 function evaluateFormula(formulaStr, formData) {
   if (!formulaStr) return 0;
   try {
-    let expr = formulaStr;
+    // Standardize 'abs(' to 'Math.abs('
+    let expr = formulaStr.replace(/\babs\(/g, "Math.abs(");
+    
     Object.keys(formData).forEach((key) => {
       const val = Number(formData[key]) || 0;
       expr = expr.split(key).join(String(val));
     });
-    if (/^[0-9+\-*/().\s]+$/.test(expr)) {
+
+    // Check for safety: allow digits, operators, and Math.abs
+    const testExpr = expr.replace(/Math\.abs/g, "");
+    if (/^[0-9+\-*/().\s,]+$/.test(testExpr)) {
       // eslint-disable-next-line no-new-func
-      const result = Function('"use strict"; return (' + expr + ")")();
+      let result = Function('"use strict"; return (' + expr + ")")();
       return isFinite(result) ? Math.round(result * 1000) / 1000 : 0;
     }
     return 0;
@@ -152,12 +157,19 @@ function DynamicField({ field, value, onChange, dynamicOptions }) {
           className={`${inputBase} bg-amber-50/60 border-amber-200 text-amber-800 font-semibold`}
         />
       )}
+
+      {field_key.toLowerCase() === "total_cable" && dynamicOptions?.availableBoqQty !== undefined && (
+        <p className={`text-[var(--text-xs)] mt-1 ${Number(value ?? 0) <= dynamicOptions.availableBoqQty ? 'text-green-600' : 'text-red-600 font-semibold'}`}>
+          Available Stock: {dynamicOptions.availableBoqQty} {dynamicOptions.boqUnit}
+          {Number(value ?? 0) > dynamicOptions.availableBoqQty && " (Exceeds available stock!)"}
+        </p>
+      )}
     </div>
   );
 }
 
 // ─── Main Modal ───────────────────────────────────────────────────────────────
-export default function WorksheetEntryModal({ isOpen, onClose, template, onSuccess }) {
+export default function WorksheetEntryModal({ isOpen, onClose, template, onSuccess, apiPrefix = "engineer" }) {
   const { user } = useAuthStore();
 
   const [fields, setFields] = useState([]);
@@ -170,6 +182,9 @@ export default function WorksheetEntryModal({ isOpen, onClose, template, onSucce
 
   const [sites, setSites] = useState([]);
   const [selectedSiteId, setSelectedSiteId] = useState("");
+
+  const [boqItems, setBoqItems] = useState([]);
+  const [selectedBoqItemId, setSelectedBoqItemId] = useState("");
 
   const [dynamicOptions, setDynamicOptions] = useState({
     projects: [],
@@ -189,8 +204,8 @@ export default function WorksheetEntryModal({ isOpen, onClose, template, onSucce
     setFormData({});
     setFieldsError(null);
     setSubmitError(null);
-    setSubmitSuccess(null);
     setSelectedSiteId("");
+    setSelectedBoqItemId("");
     setDynamicOptions({
       projects: [],
       sub_divisions: [],
@@ -202,7 +217,7 @@ export default function WorksheetEntryModal({ isOpen, onClose, template, onSucce
       try {
         setLoadingFields(true);
         const res = await apiClient.get(
-          `${baseUrl}engineer/work-sheet-templates/${template.template_id}`
+          `${baseUrl}${apiPrefix}/work-sheet-templates/${template.template_id}`
         );
         if (res.data?.success) {
           const fetchedFields = res.data.data?.fields || [];
@@ -233,7 +248,7 @@ export default function WorksheetEntryModal({ isOpen, onClose, template, onSucce
     if (!isOpen) return;
     const fetchSites = async () => {
       try {
-        const res = await apiClient.get(`${baseUrl}engineer/sites`);
+        const res = await apiClient.get(`${baseUrl}${apiPrefix}/sites`);
         if (res.data?.success) {
           setSites(res.data.data || []);
         }
@@ -242,14 +257,43 @@ export default function WorksheetEntryModal({ isOpen, onClose, template, onSucce
       }
     };
     fetchSites();
-  }, [isOpen, baseUrl]);
+  }, [isOpen, baseUrl, apiPrefix]);
+
+  // Fetch BOQ Items (Stock Matrix)
+  useEffect(() => {
+    if (!isOpen) return;
+    const fetchBoqItems = async () => {
+      try {
+        let rawUser = null;
+        try {
+          const authData = localStorage.getItem('auth-storage');
+          if (authData) {
+            const parsedAuth = JSON.parse(authData);
+            rawUser = parsedAuth?.state?.user || parsedAuth?.user || parsedAuth;
+          }
+        } catch(e) {}
+        
+        const empId = user?.employee_id || user?.employeeId || user?.id || user?.userId || rawUser?.employee_id || rawUser?.id || 0;
+        
+        if (!empId) return;
+
+        const res = await apiClient.get(`${baseUrl}${apiPrefix}/stock-matrix?employee_id=${empId}`);
+        if (res.data?.success) {
+          setBoqItems(res.data.data || []);
+        }
+      } catch (err) {
+        console.error("Failed to fetch BOQ items", err);
+      }
+    };
+    fetchBoqItems();
+  }, [isOpen, baseUrl, apiPrefix, user]);
 
   // Fetch dynamic cascading dropdown options
   useEffect(() => {
     if (!isOpen) return;
     const fetchProjects = async () => {
       try {
-        const res = await apiClient.get(`${baseUrl}engineer/work-sheet-options?field=projects`);
+        const res = await apiClient.get(`${baseUrl}${apiPrefix}/work-sheet-options?field=projects`);
         if (res.data?.success) {
           setDynamicOptions(prev => ({ ...prev, projects: res.data.data }));
         }
@@ -268,7 +312,7 @@ export default function WorksheetEntryModal({ isOpen, onClose, template, onSucce
     }
     const fetchSubDivisions = async () => {
       try {
-        const res = await apiClient.get(`${baseUrl}engineer/work-sheet-options?field=sub_divisions&project_id=${projectId}`);
+        const res = await apiClient.get(`${baseUrl}${apiPrefix}/work-sheet-options?field=sub_divisions&project_id=${projectId}`);
         if (res.data?.success) {
           setDynamicOptions(prev => ({ ...prev, sub_divisions: res.data.data }));
         }
@@ -287,7 +331,7 @@ export default function WorksheetEntryModal({ isOpen, onClose, template, onSucce
     }
     const fetchFeeders = async () => {
       try {
-        const res = await apiClient.get(`${baseUrl}engineer/work-sheet-options?field=feeders&sub_division=${encodeURIComponent(subDivision)}`);
+        const res = await apiClient.get(`${baseUrl}${apiPrefix}/work-sheet-options?field=feeders&sub_division=${encodeURIComponent(subDivision)}`);
         if (res.data?.success) {
           setDynamicOptions(prev => ({ ...prev, feeders: res.data.data }));
         }
@@ -306,7 +350,7 @@ export default function WorksheetEntryModal({ isOpen, onClose, template, onSucce
     }
     const fetchLocations = async () => {
       try {
-        const res = await apiClient.get(`${baseUrl}engineer/work-sheet-options?field=locations&feeder=${encodeURIComponent(feeder)}`);
+        const res = await apiClient.get(`${baseUrl}${apiPrefix}/work-sheet-options?field=locations&feeder=${encodeURIComponent(feeder)}`);
         if (res.data?.success) {
           setDynamicOptions(prev => ({ ...prev, locations: res.data.data }));
         }
@@ -341,8 +385,20 @@ export default function WorksheetEntryModal({ isOpen, onClose, template, onSucce
         });
 
         fields.forEach((f) => {
-          if (f.field_type === "formula" && f.configuration?.formula) {
-            updated[f.field_key] = evaluateFormula(f.configuration.formula, updated);
+          if (f.field_type === "formula") {
+            if (f.configuration?.formula) {
+              updated[f.field_key] = evaluateFormula(f.configuration.formula, updated);
+            } else if ((f.field_key || '').toLowerCase() === 'total_cable') {
+              // Fallback calculation for total_cable if no formula is provided
+              const rFrom = Number(updated['reading_from'] || 0);
+              const rTo = Number(updated['reading_to'] || 0);
+              updated[f.field_key] = Math.abs(rTo - rFrom);
+            }
+            
+            // Enforce non-negative for total_cable
+            if ((f.field_key || '').toLowerCase() === 'total_cable' && Number(updated[f.field_key]) < 0) {
+              updated[f.field_key] = 0;
+            }
           }
         });
         return updated;
@@ -351,12 +407,34 @@ export default function WorksheetEntryModal({ isOpen, onClose, template, onSucce
     [fields]
   );
 
+  // Calculate selected BOQ available quantity
+  const selectedBoqItem = boqItems.find(b => String(b.boq_item_id) === String(selectedBoqItemId));
+  const availableQty = selectedBoqItem ? Number(selectedBoqItem.in_hand_qty) : 0;
+  const unit = selectedBoqItem?.unit || "";
+  
+  // Inject BOQ data into dynamicOptions for the DynamicField to read
+  const enhancedDynamicOptions = {
+    ...dynamicOptions,
+    availableBoqQty: selectedBoqItemId ? availableQty : undefined,
+    boqUnit: unit
+  };
+
   // Submit worksheet entry
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSubmitting(true);
     setSubmitError(null);
     setSubmitSuccess(null);
+
+    // Validate Total Cable against in_hand_qty
+    const hasTotalCableField = fields.some(f => (f.field_key || '').toLowerCase() === 'total_cable');
+    const totalCableVal = Number(formData['total_cable'] || formData['Total Cable'] || 0);
+
+    if (selectedBoqItemId && hasTotalCableField && totalCableVal > availableQty) {
+      setSubmitError(`Total Cable (${totalCableVal}) exceeds the available stock (${availableQty} ${unit}).`);
+      setSubmitting(false);
+      return;
+    }
 
     try {
       // Fetch Geolocation (Strictly require current location)
@@ -386,7 +464,7 @@ export default function WorksheetEntryModal({ isOpen, onClose, template, onSucce
       }
 
       // Ensure numeric values in formData are actual numbers where appropriate
-      const parsedData = { ...formData };
+      const parsedData = { ...formData, boq_item_id: Number(selectedBoqItemId) };
       
       // Auto-fill hidden fields (GPS and Timestamp)
       fields.forEach(f => {
@@ -445,7 +523,7 @@ export default function WorksheetEntryModal({ isOpen, onClose, template, onSucce
       console.log("Submitting Worksheet Payload:", payload);
 
       const res = await apiClient.post(
-        `${baseUrl}engineer/work-sheet-entries`,
+        `${baseUrl}${apiPrefix}/work-sheet-entries`,
         payload
       );
 
@@ -588,6 +666,26 @@ export default function WorksheetEntryModal({ isOpen, onClose, template, onSucce
                   </select>
                 </div>
 
+                {/* BOQ Item Selection Dropdown (Root level requirement inside data) */}
+                <div className="flex flex-col gap-[var(--space-1)] sm:col-span-2">
+                  <label className="text-[var(--text-xs)] font-semibold text-slate-600 flex items-center gap-1">
+                    Select BOQ Item <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    required
+                    value={selectedBoqItemId}
+                    onChange={(e) => setSelectedBoqItemId(e.target.value)}
+                    className="w-full h-[var(--input-height)] px-[var(--space-4)] rounded-[var(--radius-lg)] border border-[var(--color-secondary-border)] bg-white text-[var(--text-sm)] text-slate-800 focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-top)]/20 focus:border-[var(--color-primary-top)] transition-colors duration-150"
+                  >
+                    <option value="">Select a BOQ item...</option>
+                    {boqItems.map((b) => (
+                      <option key={b.boq_item_id} value={b.boq_item_id}>
+                        {b.name || b.boq_item_name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
                 {/* Dynamic Fields */}
                 {fields.map((field) => (
                   <div
@@ -598,7 +696,7 @@ export default function WorksheetEntryModal({ isOpen, onClose, template, onSucce
                       field={field}
                       value={formData[field.field_key]}
                       onChange={handleInputChange}
-                      dynamicOptions={dynamicOptions}
+                      dynamicOptions={enhancedDynamicOptions}
                     />
                   </div>
                 ))}

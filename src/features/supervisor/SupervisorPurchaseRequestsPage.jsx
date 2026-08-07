@@ -3,16 +3,16 @@ import DashboardLayout from "@/layouts/DashboardLayout";
 import { FileText, Plus, Loader2, AlertCircle, X, Trash2 } from "lucide-react";
 import apiClient from "@/lib/axios";
 import { 
-  GET_PURCHASE_REQUESTS_API, 
-  GET_ENGINEER_PROJECTS_API, 
-  GET_ENGINEER_SITES_API, 
-  GET_ENGINEER_BOQ_ITEMS_API 
+  GET_SUPERVISOR_PURCHASE_REQUESTS_API, 
+  GET_SUPERVISOR_PROJECTS_API, 
+  GET_SUPERVISOR_SITES_API, 
+  GET_SUPERVISOR_BOQ_ITEMS_API 
 } from "@/utils/api/hr.api";
 import SideDrawer from "@/components/ui/SideDrawer";
 import { useAuthStore } from "@/store/useAuthStore";
 import { authStorage } from "@/utils/authStorage";
 
-export default function EngineerPurchaseRequestsPage() {
+export default function SupervisorPurchaseRequestsPage() {
   const { user } = useAuthStore();
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -37,7 +37,7 @@ export default function EngineerPurchaseRequestsPage() {
     setLoading(true);
     setError(null);
     try {
-      const res = await apiClient.get(GET_PURCHASE_REQUESTS_API);
+      const res = await apiClient.get(GET_SUPERVISOR_PURCHASE_REQUESTS_API);
       if (res.data?.success) {
         setRequests(res.data.data || []);
       } else {
@@ -54,9 +54,9 @@ export default function EngineerPurchaseRequestsPage() {
   const fetchDropdownData = async () => {
     try {
       const [projRes, siteRes, boqRes] = await Promise.all([
-        apiClient.get(GET_ENGINEER_PROJECTS_API),
-        apiClient.get(GET_ENGINEER_SITES_API),
-        apiClient.get(GET_ENGINEER_BOQ_ITEMS_API)
+        apiClient.get(GET_SUPERVISOR_PROJECTS_API),
+        apiClient.get(GET_SUPERVISOR_SITES_API),
+        apiClient.get(GET_SUPERVISOR_BOQ_ITEMS_API)
       ]);
       if (projRes.data?.success) setProjects(projRes.data.data || []);
       if (siteRes.data?.success) setSites(siteRes.data.data || []);
@@ -145,7 +145,7 @@ export default function EngineerPurchaseRequestsPage() {
       
       console.log("Submitting PR payload:", JSON.stringify(payload, null, 2));
       
-      const res = await apiClient.post(GET_PURCHASE_REQUESTS_API, payload);
+      const res = await apiClient.post(GET_SUPERVISOR_PURCHASE_REQUESTS_API, payload);
       if (res.data?.success) {
         setShowModal(false);
         setFormData({

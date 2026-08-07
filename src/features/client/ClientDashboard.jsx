@@ -1,5 +1,6 @@
 import DashboardLayout from "@/layouts/DashboardLayout";
 import { useAuthStore } from "@/store/useAuthStore";
+import { formatIndianCurrency } from "@/utils/formatters";
 import { Building2, FolderGit2, FileText, CheckCircle2 } from "lucide-react";
 
 export default function ClientDashboard() {
@@ -44,7 +45,7 @@ export default function ClientDashboard() {
           <div className="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm flex items-center justify-between">
             <div>
               <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Client Invoices</p>
-              <h3 className="text-2xl font-bold text-slate-800 mt-1">₹ 14.2 L</h3>
+              <h3 className="text-2xl font-bold text-slate-800 mt-1">{formatIndianCurrency(1420000)}</h3>
             </div>
             <div className="p-3.5 rounded-xl border text-purple-600 bg-purple-50 border-purple-100">
               <FileText className="w-6 h-6" />

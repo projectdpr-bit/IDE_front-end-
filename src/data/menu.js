@@ -177,8 +177,12 @@ export const menu = {
       path: "/supervisor/dashboard",
     },
     {
-      name: "My Attendance",
-      path: "/employee/attendance",
+      name: "Purchase Requests",
+      path: "/supervisor/purchase-requests",
+    },
+    {
+      name: "Sheet Entry",
+      path: "/supervisor/sheet-entry",
     }
   ],
   "site engineer": [

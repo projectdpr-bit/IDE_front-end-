@@ -7,6 +7,7 @@ import {
   GET_STORE_BOQ_ITEMS_API, 
   GET_STORE_STORES_API 
 } from "@/utils/api/store.api";
+import { formatIndianCurrency } from "@/utils/formatters";
 
 function NewRepairPanel({ isOpen, onClose, onSuccess }) {
   const [loading, setLoading] = useState(false);
@@ -354,7 +355,7 @@ export default function RepairPage() {
                           </span>
                         </td>
                         <td className="px-(--table-cell-px) py-(--table-cell-py) text-slate-700 text-right whitespace-nowrap font-semibold">
-                          ₹{item.estimated_cost?.toLocaleString('en-IN') || 0}
+                          {formatIndianCurrency(item.estimated_cost)}
                         </td>
                         <td className="px-(--table-cell-px) py-(--table-cell-py) text-slate-600 whitespace-nowrap text-center text-(--text-xs)">
                           {formatDate(item.sent_date)} <span className="text-slate-400 mx-1">-</span> {formatDate(item.expected_return_date)}

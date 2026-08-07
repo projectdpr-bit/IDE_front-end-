@@ -4,6 +4,7 @@ import { ArrowDownLeft, Search, Loader2, ChevronDown, ChevronUp, Plus } from "lu
 import apiClient from "@/lib/axios";
 import { GET_STORE_STOCK_INWARD_MANUAL_API } from "@/utils/ApiHelper";
 import ManualInwardPanel from "./components/ManualInwardPanel";
+import { formatIndianCurrency } from "@/utils/formatters";
 
 export default function InventoryInwardPage() {
   const [loading, setLoading] = useState(true);
@@ -186,7 +187,7 @@ export default function InventoryInwardPage() {
                             {log.store_name || "—"}
                           </td>
                           <td className="px-[var(--table-cell-px)] py-[var(--table-cell-py)] text-[var(--text-sm)] text-slate-800 border-b border-[var(--color-layout-border)] whitespace-nowrap text-right font-medium">
-                            ₹{log.invoice_amount ? Number(log.invoice_amount).toLocaleString('en-IN') : "0"}
+                            {formatIndianCurrency(log.invoice_amount)}
                           </td>
                           <td className="px-[var(--table-cell-px)] py-[var(--table-cell-py)] text-[var(--text-sm)] text-slate-700 border-b border-[var(--color-layout-border)] whitespace-nowrap">
                             <div className="font-medium">{log.received_by_name || "—"}</div>
@@ -238,9 +239,9 @@ export default function InventoryInwardPage() {
                                         <td className="py-2.5 px-4 text-slate-600 font-mono">{item.hsn_sac || "—"}</td>
                                         <td className="py-2.5 px-4 font-bold text-slate-900 text-right">{item.quantity}</td>
                                         <td className="py-2.5 px-4 text-slate-500">{item.unit}</td>
-                                        <td className="py-2.5 px-4 text-slate-700 text-right font-medium">₹{Number(item.unit_price).toLocaleString('en-IN')}</td>
+                                        <td className="py-2.5 px-4 text-slate-700 text-right font-medium">{formatIndianCurrency(item.unit_price)}</td>
                                         <td className="py-2.5 px-4 font-bold text-slate-900 text-right">
-                                          ₹{Number(item.quantity * item.unit_price).toLocaleString('en-IN')}
+                                          {formatIndianCurrency(item.quantity * item.unit_price)}
                                         </td>
                                       </tr>
                                     ))}

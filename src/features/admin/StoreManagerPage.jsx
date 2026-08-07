@@ -5,6 +5,7 @@ import apiClient from "@/lib/axios";
 import { GET_STORES_LIST_API, ADD_STORE_API, ASSIGN_STORE_MANAGER_API, GET_STORE_MANAGER_LIST_API } from "@/utils/ApiHelper";
 import { useForm } from "@/hooks/useForm";
 import { validators } from "@/utils/validation";
+import { formatIndianCurrency } from "@/utils/formatters";
 import { Store, UserCheck, Plus, Search, ChevronRight, Loader2, AlertCircle } from "lucide-react";
 
 export default function StoreManagerPage() {
@@ -214,7 +215,7 @@ export default function StoreManagerPage() {
           <div className="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm flex items-center justify-between">
             <div>
               <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Total Stock Value</p>
-              <h3 className="text-2xl font-bold text-slate-900 mt-1">₹1.70 Cr</h3>
+              <h3 className="text-2xl font-bold text-slate-900 mt-1">{formatIndianCurrency(17000000)}</h3>
               <p className="text-2xs font-medium text-sky-600 mt-0.5">Stored materials & equipment</p>
             </div>
             <div className="p-3.5 rounded-xl bg-sky-50 border border-sky-100 text-sky-600">

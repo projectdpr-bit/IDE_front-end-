@@ -5,11 +5,10 @@ import apiClient from "@/lib/axios";
 import { GET_BOQ_ITEMS_API, ADD_BOQ_ITEM_API, IMPORT_BOQ_ITEMS_API, GET_PROCUREMENT_PROJECTS_API } from "@/utils/ApiHelper";
 import SideDrawer from "@/components/ui/SideDrawer";
 import * as XLSX from "xlsx";
+import { formatIndianCurrency } from "@/utils/formatters";
 
 function formatCurrency(val) {
-  const n = parseFloat(val);
-  if (isNaN(n)) return "₹0.00";
-  return "₹" + n.toLocaleString("en-IN", { minimumFractionDigits: 2 });
+  return formatIndianCurrency(val);
 }
 
 export default function BOQPage() {

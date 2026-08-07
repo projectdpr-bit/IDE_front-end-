@@ -7,15 +7,14 @@ import SideDrawer from "@/components/ui/SideDrawer";
 import { useAuthStore } from "@/store/useAuthStore";
 import { authStorage } from "@/utils/authStorage";
 import { saveAs } from "file-saver";
+import { formatIndianCurrency } from "@/utils/formatters";
 
 // ─── helpers ────────────────────────────────────────────────
 const EMPTY_PROJECT_ITEM = { material_id: "", quantity: "", unit_price: "" };
 const EMPTY_OFFICE_ITEM = { item_description: "", unit: "", quantity: "", unit_price: "" };
 
 function formatCurrency(val) {
-  const n = parseFloat(val);
-  if (isNaN(n)) return "₹0.00";
-  return "₹" + n.toLocaleString("en-IN", { minimumFractionDigits: 2 });
+  return formatIndianCurrency(val);
 }
 
 // ─── Component ───────────────────────────────────────────────

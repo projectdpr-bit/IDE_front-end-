@@ -5,6 +5,7 @@ import SideDrawer from "@/components/ui/SideDrawer";
 import apiClient from "@/lib/axios";
 import { useForm } from "@/hooks/useForm";
 import { validators } from "@/utils/validation";
+import { formatIndianCurrency } from "@/utils/formatters";
 import {
   GET_PROJECT_API,
   GET_CLIENT_API,
@@ -15,7 +16,6 @@ import {
   ADD_SITE_API,
   GET_SITE_ASSIGNMENTS_API,
   ADD_SITE_ASSIGNMENT_API,
-
   GET_SITE_ENGINEERS_API,
   GET_STORES_LIST_API,
   GET_STORE_MANAGER_LIST_API,
@@ -1141,7 +1141,7 @@ export default function ProjectsPage() {
                 <div>
                   <p className="text-2xs font-semibold text-slate-400 uppercase tracking-wider leading-none mb-1">BOQ Amount</p>
                   <p className="text-sm font-bold text-slate-900 leading-none">
-                    {projectToView.boq ? `₹${Number(projectToView.boq).toLocaleString()}` : "N/A"}
+                    {projectToView.boq ? formatIndianCurrency(projectToView.boq) : "N/A"}
                   </p>
                 </div>
               </div>

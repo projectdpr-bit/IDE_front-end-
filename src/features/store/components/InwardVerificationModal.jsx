@@ -3,6 +3,7 @@ import { UploadCloud, CheckCircle2, Edit3, X, Loader2, Save, AlertCircle, Plus, 
 import apiClient from "@/lib/axios";
 import { EXTRACT_INVOICE_IMAGES_API, STORE_STOCK_INWARD_API, GET_STORE_PO_BOQ_ITEMS_API } from "@/utils/ApiHelper";
 import { useAuthStore } from "@/store/useAuthStore";
+import { formatIndianCurrency } from "@/utils/formatters";
 
 export default function InwardVerificationModal({ isOpen, onClose, selectedPO, onSuccess }) {
   const { user } = useAuthStore();
@@ -601,7 +602,7 @@ export default function InwardVerificationModal({ isOpen, onClose, selectedPO, o
                             className="w-full h-7 px-2 rounded border text-xs bg-white outline-none"
                           />
                         ) : (
-                          <div className="font-semibold text-slate-800">₹{Number(formData.subtotal || 0).toLocaleString('en-IN')}</div>
+                          <div className="font-semibold text-slate-800">{formatIndianCurrency(formData.subtotal)}</div>
                         )}
                       </div>
 
@@ -616,7 +617,7 @@ export default function InwardVerificationModal({ isOpen, onClose, selectedPO, o
                             className="w-full h-7 px-2 rounded border text-xs font-bold text-(--) bg-white outline-none"
                           />
                         ) : (
-                          <div className="font-bold ">₹{Number(formData.grand_total || 0).toLocaleString('en-IN')}</div>
+                          <div className="font-bold ">{formatIndianCurrency(formData.grand_total)}</div>
                         )}
                       </div>
 
@@ -631,7 +632,7 @@ export default function InwardVerificationModal({ isOpen, onClose, selectedPO, o
                             className="w-full h-7 px-2 rounded border text-xs bg-white outline-none"
                           />
                         ) : (
-                          <div className="text-slate-700">₹{formData.cgst_amount || 0}</div>
+                          <div className="text-slate-700">{formatIndianCurrency(formData.cgst_amount)}</div>
                         )}
                       </div>
 
@@ -646,7 +647,7 @@ export default function InwardVerificationModal({ isOpen, onClose, selectedPO, o
                             className="w-full h-7 px-2 rounded border text-xs bg-white outline-none"
                           />
                         ) : (
-                          <div className="text-slate-700">₹{formData.sgst_amount || 0}</div>
+                          <div className="text-slate-700">{formatIndianCurrency(formData.sgst_amount)}</div>
                         )}
                       </div>
 
@@ -661,7 +662,7 @@ export default function InwardVerificationModal({ isOpen, onClose, selectedPO, o
                             className="w-full h-7 px-2 rounded border text-xs bg-white outline-none"
                           />
                         ) : (
-                          <div className="text-slate-700">₹{formData.igst_amount || 0}</div>
+                          <div className="text-slate-700">{formatIndianCurrency(formData.igst_amount)}</div>
                         )}
                       </div>
 
@@ -676,7 +677,7 @@ export default function InwardVerificationModal({ isOpen, onClose, selectedPO, o
                             className="w-full h-7 px-2 rounded border text-xs bg-white outline-none"
                           />
                         ) : (
-                          <div className="text-slate-700">₹{formData.round_off || 0}</div>
+                          <div className="text-slate-700">{formatIndianCurrency(formData.round_off)}</div>
                         )}
                       </div>
                     </div>
@@ -865,11 +866,11 @@ export default function InwardVerificationModal({ isOpen, onClose, selectedPO, o
                                   readOnly={item.isNew}
                                 />
                               ) : (
-                                <span className="text-slate-700 font-medium">₹{Number(item.unit_price || 0).toLocaleString('en-IN')}</span>
+                                <span className="text-slate-700 font-medium">{formatIndianCurrency(item.unit_price)}</span>
                               )}
                             </td>
                             <td className="px-(--) py-(--) text-right font-bold text-slate-900">
-                              ₹{Number(amt).toLocaleString('en-IN')}
+                              {formatIndianCurrency(amt)}
                             </td>
                             {isEditing && (
                               <td className="px-(--) py-(--) text-right">
@@ -911,7 +912,7 @@ export default function InwardVerificationModal({ isOpen, onClose, selectedPO, o
                         </td>
                         <td className="px-(--) py-(--)"></td>
                         <td className="px-(--) py-(--) text-right font-bold text-(--)">
-                          ₹{Number(formData.subtotal || 0).toLocaleString('en-IN')}
+                          {formatIndianCurrency(formData.subtotal)}
                         </td>
                         {isEditing && <td className="px-(--) py-(--)"></td>}
                       </tr>
