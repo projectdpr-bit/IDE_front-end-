@@ -183,6 +183,14 @@ export const menu = {
     {
       name: "Sheet Entry",
       path: "/supervisor/sheet-entry",
+    },
+    {
+      name: "Approvals",
+      path: "/supervisor/approvals",
+    },
+    {
+      name: "History",
+      path: "/supervisor/history",
     }
   ],
   "site engineer": [

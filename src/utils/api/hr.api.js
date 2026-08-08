@@ -18,3 +18,6 @@ export const GET_SUPERVISOR_PROJECTS_API = BASEURL + "senior-engineer/work-sheet
 export const GET_SUPERVISOR_SITES_API = BASEURL + "senior-engineer/sites";
 export const GET_SUPERVISOR_BOQ_ITEMS_API = BASEURL + "senior-engineer/boq-item-lines";
 export const GET_SUPERVISOR_WORKSHEET_TEMPLATES_API = BASEURL + "senior-engineer/work-sheet-templates";
+export const GET_SUPERVISOR_PENDING_ENTRIES_API = BASEURL + "senior-engineer/pending-entries";
+export const PUT_SUPERVISOR_WORKSHEET_STATUS_API = BASEURL + "senior-engineer/work-sheet-entries";
+export const GET_SUPERVISOR_HISTORY_ENTRIES_API = BASEURL + "senior-engineer/engineer-entries";

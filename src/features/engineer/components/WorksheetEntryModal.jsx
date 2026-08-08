@@ -40,7 +40,7 @@ function evaluateFormula(formulaStr, formData) {
 }
 
 // ─── Single Dynamic Field Renderer ───────────────────────────────────────────
-function DynamicField({ field, value, onChange, dynamicOptions }) {
+function DynamicField({ field, value, onChange, dynamicOptions, formData }) {
   const { field_label, field_key, field_type, is_required, configuration } = field;
 
   const inputBase =
@@ -62,6 +62,16 @@ function DynamicField({ field, value, onChange, dynamicOptions }) {
     }
   }
 
+  const isReadingTo = (field_key || '').toLowerCase() === 'reading_to' || (field_key || '').toLowerCase() === 'reading to';
+  const readingFromKey = formData ? Object.keys(formData).find(k => k.toLowerCase() === 'reading_from' || k.toLowerCase() === 'reading from') : null;
+  
+  let usageDiff = null;
+  if (isReadingTo && readingFromKey && formData[readingFromKey] !== undefined && value !== undefined && value !== "") {
+    const rFrom = Number(formData[readingFromKey]);
+    const rTo = Number(value);
+    usageDiff = Math.abs(rTo - rFrom);
+  }
+
   const isGPS = 
     (field_key || '').toLowerCase().includes('gps') || 
     (field_label || '').toLowerCase().includes('gps') || 
@@ -75,8 +85,8 @@ function DynamicField({ field, value, onChange, dynamicOptions }) {
     (field_label || '').toLowerCase().includes('time stamp') || 
     (field_label || '').toLowerCase().includes('stamp time');
 
-  // Hide GPS and Timestamp fields from the frontend completely
-  if (isGPS || isTimestamp) {
+  // Hide GPS, Timestamp, and Formula fields from the frontend completely
+  if (isGPS || isTimestamp || field_type === "formula") {
     return null;
   }
 
@@ -148,21 +158,29 @@ function DynamicField({ field, value, onChange, dynamicOptions }) {
         </select>
       )}
 
-      {field_type === "formula" && (
-        <input
-          id={`field-${field_key}`}
-          type="number"
-          disabled
-          value={value ?? 0}
-          className={`${inputBase} bg-amber-50/60 border-amber-200 text-amber-800 font-semibold`}
-        />
-      )}
-
-      {field_key.toLowerCase() === "total_cable" && dynamicOptions?.availableBoqQty !== undefined && (
-        <p className={`text-[var(--text-xs)] mt-1 ${Number(value ?? 0) <= dynamicOptions.availableBoqQty ? 'text-green-600' : 'text-red-600 font-semibold'}`}>
-          Available Stock: {dynamicOptions.availableBoqQty} {dynamicOptions.boqUnit}
-          {Number(value ?? 0) > dynamicOptions.availableBoqQty && " (Exceeds available stock!)"}
-        </p>
+      {isReadingTo && usageDiff !== null && (
+        <div className="flex flex-col gap-[var(--space-1)] mt-[var(--space-3)] pt-[var(--space-3)] border-t border-[var(--color-layout-border)]">
+          <label className="text-[var(--text-xs)] font-semibold text-slate-600 flex items-center gap-1">
+            Total Cable
+            <span className="text-red-500">*</span>
+            <span className="inline-flex items-center gap-0.5 px-[var(--space-2)] py-px rounded-full bg-amber-100 text-amber-700 text-[var(--text-2xs)] font-bold uppercase tracking-wide ml-1">
+              <Calculator className="w-2.5 h-2.5" />
+              Auto
+            </span>
+          </label>
+          <input
+            type="number"
+            disabled
+            value={usageDiff ?? 0}
+            className={`${inputBase} bg-amber-50/60 border-amber-200 text-amber-800 font-semibold`}
+          />
+          {dynamicOptions?.availableBoqQty !== undefined && (
+            <p className={`text-[var(--text-xs)] mt-1 ${usageDiff <= dynamicOptions.availableBoqQty ? 'text-green-600' : 'text-red-600 font-semibold'}`}>
+              Available Stock: {dynamicOptions.availableBoqQty} {dynamicOptions.boqUnit}
+              {usageDiff > dynamicOptions.availableBoqQty && " (Exceeds available stock!)"}
+            </p>
+          )}
+        </div>
       )}
     </div>
   );
@@ -388,16 +406,16 @@ export default function WorksheetEntryModal({ isOpen, onClose, template, onSucce
           if (f.field_type === "formula") {
             if (f.configuration?.formula) {
               updated[f.field_key] = evaluateFormula(f.configuration.formula, updated);
-            } else if ((f.field_key || '').toLowerCase() === 'total_cable') {
-              // Fallback calculation for total_cable if no formula is provided
-              const rFrom = Number(updated['reading_from'] || 0);
-              const rTo = Number(updated['reading_to'] || 0);
+            } else {
+              // Fallback calculation for ANY formula field if reading_from and reading_to exist
+              const rFrom = Number(updated['reading_from'] || updated['reading from'] || 0);
+              const rTo = Number(updated['reading_to'] || updated['reading to'] || 0);
               updated[f.field_key] = Math.abs(rTo - rFrom);
             }
             
-            // Enforce non-negative for total_cable
-            if ((f.field_key || '').toLowerCase() === 'total_cable' && Number(updated[f.field_key]) < 0) {
-              updated[f.field_key] = 0;
+            // Enforce non-negative for the calculated field
+            if (Number(updated[f.field_key]) < 0) {
+              updated[f.field_key] = Math.abs(updated[f.field_key]);
             }
           }
         });
@@ -426,14 +444,16 @@ export default function WorksheetEntryModal({ isOpen, onClose, template, onSucce
     setSubmitError(null);
     setSubmitSuccess(null);
 
-    // Validate Total Cable against in_hand_qty
-    const hasTotalCableField = fields.some(f => (f.field_key || '').toLowerCase() === 'total_cable');
-    const totalCableVal = Number(formData['total_cable'] || formData['Total Cable'] || 0);
-
-    if (selectedBoqItemId && hasTotalCableField && totalCableVal > availableQty) {
-      setSubmitError(`Total Cable (${totalCableVal}) exceeds the available stock (${availableQty} ${unit}).`);
-      setSubmitting(false);
-      return;
+    // Validate Formula Field (Calculated quantity) against in_hand_qty
+    const formulaField = fields.find(f => f.field_type === 'formula');
+    
+    if (selectedBoqItemId && formulaField) {
+      const calculatedVal = Number(formData[formulaField.field_key] || 0);
+      if (calculatedVal > availableQty) {
+        setSubmitError(`${formulaField.field_label || 'Calculated Quantity'} (${calculatedVal}) exceeds the available stock (${availableQty} ${unit}).`);
+        setSubmitting(false);
+        return;
+      }
     }
 
     try {
@@ -697,6 +717,7 @@ export default function WorksheetEntryModal({ isOpen, onClose, template, onSucce
                       value={formData[field.field_key]}
                       onChange={handleInputChange}
                       dynamicOptions={enhancedDynamicOptions}
+                      formData={formData}
                     />
                   </div>
                 ))}
