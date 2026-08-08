@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useApiRefreshStore } from "@/store/useApiRefreshStore";
 import { authStorage } from "@/utils/authStorage";
 import DashboardLayout from "@/layouts/DashboardLayout";
 import SideDrawer from "@/components/ui/SideDrawer";
@@ -26,6 +27,7 @@ import {
 import { FolderGit2, Plus, Search, Loader2, Edit3, Trash2, UserPlus, RefreshCw, AlertCircle, MapPin, Building, FileText, Eye, Calendar, DollarSign, Fingerprint } from "lucide-react";
 
 export default function ProjectsPage() {
+  const refreshKey = useApiRefreshStore((state) => state.refreshKey);
   const [projects, setProjects] = useState([]);
   const [clients, setClients] = useState([]);
   const [supervisors, setSupervisors] = useState([]);
@@ -200,7 +202,7 @@ export default function ProjectsPage() {
 
   useEffect(() => {
     setTimeout(fetchData, 0);
-  }, []);
+  }, [refreshKey]);
 
   // Helper to resolve client_name from client_id
   const getClientName = (clientId) => {

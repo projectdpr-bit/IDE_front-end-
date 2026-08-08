@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useApiRefreshStore } from "@/store/useApiRefreshStore";
 import DashboardLayout from "@/layouts/DashboardLayout";
 import { Loader2, Search, FileText, UploadCloud } from "lucide-react";
 import apiClient from "@/lib/axios";
@@ -6,6 +7,7 @@ import { GET_STORE_DISPATCH_ITEMS_API } from "@/utils/ApiHelper";
 import InwardVerificationModal from "./components/InwardVerificationModal";
 
 export default function StorePOPage() {
+  const refreshKey = useApiRefreshStore((state) => state.refreshKey);
   const [dispatchItems, setDispatchItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
@@ -33,7 +35,7 @@ export default function StorePOPage() {
       fetchDispatchItems();
     }, 0);
     return () => clearTimeout(timer);
-  }, []);
+  }, [refreshKey]);
 
   const filteredItems = dispatchItems.filter(item => 
     item.po_number?.toLowerCase().includes(searchQuery.toLowerCase()) ||

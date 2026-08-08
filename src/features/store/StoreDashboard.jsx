@@ -1,10 +1,12 @@
 import { useState, useEffect } from "react";
+import { useApiRefreshStore } from "@/store/useApiRefreshStore";
 import DashboardLayout from "@/layouts/DashboardLayout";
 import { useAuthStore } from "@/store/useAuthStore";
 import { Store, PackageCheck, ArrowDownLeft, ArrowUpRight, Loader2 } from "lucide-react";
 import apiClient from "@/lib/axios";
 import { GET_STORE_PROJECTS_API } from "@/utils/ApiHelper";
 export default function StoreDashboard() {
+  const refreshKey = useApiRefreshStore((state) => state.refreshKey);
   const { user } = useAuthStore();
   const [projects, setProjects] = useState([]);
   const [loadingProjects, setLoadingProjects] = useState(true);
@@ -27,7 +29,7 @@ export default function StoreDashboard() {
 
   useEffect(() => {
     fetchProjects();
-  }, []);
+  }, [refreshKey]);
 
   return (
     <DashboardLayout>

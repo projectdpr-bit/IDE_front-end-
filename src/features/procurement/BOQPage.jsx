@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useApiRefreshStore } from "@/store/useApiRefreshStore";
 import DashboardLayout from "@/layouts/DashboardLayout";
 import { PackageSearch, Plus, Search, Loader2, Edit3, Trash2, FileUp, ListPlus, PlusCircle } from "lucide-react";
 import apiClient from "@/lib/axios";
@@ -12,6 +13,7 @@ function formatCurrency(val) {
 }
 
 export default function BOQPage() {
+  const refreshKey = useApiRefreshStore((state) => state.refreshKey);
   const [boqItems, setBoqItems] = useState([]);
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -88,7 +90,7 @@ export default function BOQPage() {
       fetchBOQItems();
       fetchProjects();
     }, 0);
-  }, []);
+  }, [refreshKey]);
 
   const handleOpenAddDrawer = (item = null) => {
     if (item) {

@@ -1,10 +1,12 @@
 import { useState, useEffect } from "react";
+import { useApiRefreshStore } from "@/store/useApiRefreshStore";
 import DashboardLayout from "@/layouts/DashboardLayout";
 import { Store, Search, Loader2 } from "lucide-react";
 import apiClient from "@/lib/axios";
 import { GET_STORE_IN_HAND_STOCK_API } from "@/utils/api/store.api";
 
 export default function InHandStockPage() {
+  const refreshKey = useApiRefreshStore((state) => state.refreshKey);
   const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [stockItems, setStockItems] = useState([]);
@@ -25,7 +27,7 @@ export default function InHandStockPage() {
 
   useEffect(() => {
     fetchStock();
-  }, []);
+  }, [refreshKey]);
 
   const filteredItems = stockItems.filter((item) =>
     item.boq_item_name?.toLowerCase().includes(searchQuery.toLowerCase())

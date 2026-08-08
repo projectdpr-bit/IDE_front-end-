@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useApiRefreshStore } from "@/store/useApiRefreshStore";
 import DashboardLayout from "@/layouts/DashboardLayout";
 import SideDrawer from "@/components/ui/SideDrawer";
 import apiClient from "@/lib/axios";
@@ -9,6 +10,7 @@ import { formatIndianCurrency } from "@/utils/formatters";
 import { Store, UserCheck, Plus, Search, ChevronRight, Loader2, AlertCircle } from "lucide-react";
 
 export default function StoreManagerPage() {
+  const refreshKey = useApiRefreshStore((state) => state.refreshKey);
   const [searchQuery, setSearchQuery] = useState("");
   const [showAddDrawer, setShowAddDrawer] = useState(false);
   const [stores, setStores] = useState([]);
@@ -84,7 +86,7 @@ export default function StoreManagerPage() {
       fetchStores(true);
     };
     initFetch();
-  }, []);
+  }, [refreshKey]);
 
   const handleOpenAddDrawer = () => {
     setFormData({ store_name: "", location: "" });

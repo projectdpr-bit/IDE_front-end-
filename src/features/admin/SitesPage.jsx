@@ -1,9 +1,11 @@
 import { useState, useEffect } from "react";
+import { useApiRefreshStore } from "@/store/useApiRefreshStore";
 import DashboardLayout from "@/layouts/DashboardLayout";
 import { MapPin, Building2, Users, Plus, Search, ShieldCheck, ChevronRight, X, UserPlus, Loader2 } from "lucide-react";
 import { assignEmployeeToSite, getSeniorSiteSupervisors, getSiteEngineers } from "@/services/site.service";
 
 export default function SitesPage() {
+  const refreshKey = useApiRefreshStore((state) => state.refreshKey);
   const [searchQuery, setSearchQuery] = useState("");
   const [showAddModal, setShowAddModal] = useState(false);
   const [assignModalData, setAssignModalData] = useState(null);
@@ -21,7 +23,7 @@ export default function SitesPage() {
         })
         .catch(err => console.error("Error fetching dropdowns:", err));
     }
-  }, [assignModalData]);
+  }, [assignModalData, refreshKey]);
 
   const handleAssignSubmit = async (e) => {
     e.preventDefault();

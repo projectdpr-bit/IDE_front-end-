@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useApiRefreshStore } from "@/store/useApiRefreshStore";
 import DashboardLayout from "@/layouts/DashboardLayout";
 import { FileText, Plus, Search, Loader2, Trash2, PackagePlus, Edit3, Download } from "lucide-react";
 import apiClient from "@/lib/axios";
@@ -19,6 +20,7 @@ function formatCurrency(val) {
 
 // ─── Component ───────────────────────────────────────────────
 export default function POPage() {
+  const refreshKey = useApiRefreshStore((state) => state.refreshKey);
   const user = useAuthStore((s) => s.user);
 
   // ── list state
@@ -91,7 +93,7 @@ export default function POPage() {
       fetchPOs();
       fetchDropdowns();
     }, 0);
-  }, []);
+  }, [refreshKey]);
 
   // ─────────────────────────────────────────────────────────
   // Drawer helpers

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useApiRefreshStore } from "@/store/useApiRefreshStore";
 import { X, Plus, Trash2, Save, Loader2 } from "lucide-react";
 import apiClient from "@/lib/axios";
 import {
@@ -10,6 +11,7 @@ import {
 import { formatIndianCurrency } from "@/utils/formatters";
 
 export default function ManualInwardPanel({ isOpen, onClose, onSuccess }) {
+  const refreshKey = useApiRefreshStore((state) => state.refreshKey);
   const [loading, setLoading] = useState(false);
   const [stores, setStores] = useState([]);
   const [vendors, setVendors] = useState([]);
@@ -42,7 +44,7 @@ export default function ManualInwardPanel({ isOpen, onClose, onSuccess }) {
       fetchDropdowns();
       setFormData(getInitialFormState());
     }
-  }, [isOpen]);
+  }, [isOpen, refreshKey]);
 
   const fetchDropdowns = async () => {
     try {
@@ -165,7 +167,7 @@ export default function ManualInwardPanel({ isOpen, onClose, onSuccess }) {
         grand_total: calculatedGrand
       }));
     }
-  }, [formData.items, formData.round_off, formData.igst_amount]);
+  }, [formData.items, formData.round_off, formData.igst_amount, refreshKey]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();

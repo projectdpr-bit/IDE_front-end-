@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useApiRefreshStore } from "@/store/useApiRefreshStore";
 import DashboardLayout from "@/layouts/DashboardLayout";
 import { CheckCircle, Loader2, AlertCircle, ShieldCheck, XCircle, X, ListFilter } from "lucide-react";
 import apiClient from "@/lib/axios";
@@ -20,6 +21,7 @@ const formatKey = (key) => {
 };
 
 export default function SupervisorApprovalsPage() {
+  const refreshKey = useApiRefreshStore((state) => state.refreshKey);
   const { user } = useAuthStore();
   const [entries, setEntries] = useState([]);
   const [historyEntries, setHistoryEntries] = useState([]);
@@ -217,7 +219,7 @@ export default function SupervisorApprovalsPage() {
 
   useEffect(() => {
     fetchEntries();
-  }, []);
+  }, [refreshKey]);
 
   const handleDirectApprove = async (entry) => {
     setProcessingIds(prev => ({ ...prev, [entry.entry_id]: "approved" }));

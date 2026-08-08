@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
+import { useApiRefreshStore } from "@/store/useApiRefreshStore";
 import {
   X,
   Loader2,
@@ -41,6 +42,7 @@ const isGPSField = (k, l, type) => {
 };
 const isTimestampField = (k, l) => matchField(k, l, ['timestamp', 'stamptime']);
 const isEngineerNameField = (k, l) => matchField(k, l, ['engineer', 'engineername', 'nameengineer']);
+const isSiteField = (k, l) => matchField(k, l, ['site']);
 
 // ─── Formula Evaluator ────────────────────────────────────────────────────────
 // Safely evaluates a formula string like "reading_from + reading_to"
@@ -176,6 +178,7 @@ function DynamicField({ field, value, onChange, dynamicOptions, formData }) {
 
 // ─── Main Modal ───────────────────────────────────────────────────────────────
 export default function WorksheetEntryModal({ isOpen, onClose, template, onSuccess, apiPrefix = "engineer" }) {
+  const refreshKey = useApiRefreshStore((state) => state.refreshKey);
   const { user } = useAuthStore();
 
   const [fields, setFields] = useState([]);
@@ -247,7 +250,7 @@ export default function WorksheetEntryModal({ isOpen, onClose, template, onSucce
     };
 
     fetchFields();
-  }, [isOpen, template?.template_id, baseUrl]);
+  }, [isOpen, template?.template_id, baseUrl, refreshKey]);
 
   // Fetch Sites for top-level dropdown
   useEffect(() => {
@@ -263,14 +266,25 @@ export default function WorksheetEntryModal({ isOpen, onClose, template, onSucce
       }
     };
     fetchSites();
-  }, [isOpen, baseUrl, apiPrefix]);
+  }, [isOpen, baseUrl, apiPrefix, refreshKey]);
 
-  // Fetch BOQ Items (Stock Matrix / BOQ Item Lines)
+  // Fetch BOQ Items (Stock Matrix)
   useEffect(() => {
     if (!isOpen) return;
     const fetchBoqItems = async () => {
       try {
-        const res = await apiClient.get(`${baseUrl}${apiPrefix}/boq-item-lines`);
+        let rawUser = null;
+        try {
+          const authData = localStorage.getItem('auth-storage');
+          if (authData) {
+            const parsedAuth = JSON.parse(authData);
+            rawUser = parsedAuth?.state?.user || parsedAuth?.user || parsedAuth;
+          }
+        } catch (e) { }
+        const empId = user?.employee_id || user?.employeeId || user?.id || user?.userId || 0;
+        const finalEmpId = Number(empId) !== 0 ? Number(empId) : Number(rawUser?.employee_id || rawUser?.id || 0);
+
+        const res = await apiClient.get(`${baseUrl}${apiPrefix}/stock-matrix?employee_id=${finalEmpId}`);
         if (res.data?.success) {
           setBoqItems(res.data.data || []);
         }
@@ -279,7 +293,7 @@ export default function WorksheetEntryModal({ isOpen, onClose, template, onSucce
       }
     };
     fetchBoqItems();
-  }, [isOpen, baseUrl, apiPrefix]);
+  }, [isOpen, baseUrl, apiPrefix, refreshKey, user]);
 
   // Fetch dynamic cascading dropdown options
   useEffect(() => {
@@ -295,7 +309,7 @@ export default function WorksheetEntryModal({ isOpen, onClose, template, onSucce
       }
     };
     fetchProjects();
-  }, [isOpen, baseUrl, apiPrefix]);
+  }, [isOpen, baseUrl, apiPrefix, refreshKey]);
 
   const getFieldValue = useCallback((isFieldFunc) => {
     for (let f of fields) {
@@ -304,7 +318,7 @@ export default function WorksheetEntryModal({ isOpen, onClose, template, onSucce
       }
     }
     return undefined;
-  }, [fields, formData]);
+  }, [fields, formData, refreshKey]);
 
   const projectVal = getFieldValue(isProjectField);
   const selectedProjectObj = (dynamicOptions.projects || []).find(p => p.project_name === projectVal);
@@ -326,7 +340,7 @@ export default function WorksheetEntryModal({ isOpen, onClose, template, onSucce
       }
     };
     fetchSubDivisions();
-  }, [projectId, baseUrl, apiPrefix]);
+  }, [projectId, baseUrl, apiPrefix, refreshKey]);
 
   const subDivision = getFieldValue(isSubDivisionField);
   useEffect(() => {
@@ -345,7 +359,7 @@ export default function WorksheetEntryModal({ isOpen, onClose, template, onSucce
       }
     };
     fetchFeeders();
-  }, [subDivision, baseUrl, apiPrefix]);
+  }, [subDivision, baseUrl, apiPrefix, refreshKey]);
 
   const feeder = getFieldValue(isFeederField);
   useEffect(() => {
@@ -364,7 +378,7 @@ export default function WorksheetEntryModal({ isOpen, onClose, template, onSucce
       }
     };
     fetchLocations();
-  }, [feeder, baseUrl, apiPrefix]);
+  }, [feeder, baseUrl, apiPrefix, refreshKey]);
 
   // Handle input change and recalculate formula fields in real-time
   const handleInputChange = useCallback(
@@ -416,7 +430,7 @@ export default function WorksheetEntryModal({ isOpen, onClose, template, onSucce
 
   // Calculate selected BOQ available quantity
   const selectedBoqItem = boqItems.find(b => String(b.boq_item_id) === String(selectedBoqItemId));
-  const availableQty = selectedBoqItem ? Number(selectedBoqItem.boq_qty ?? selectedBoqItem.in_hand_qty ?? 0) : 0;
+  const availableQty = selectedBoqItem ? Number(selectedBoqItem.in_hand_qty ?? selectedBoqItem.boq_qty ?? 0) : 0;
   const unit = selectedBoqItem?.unit || "";
 
   // Inject BOQ data into dynamicOptions for the DynamicField to read
@@ -430,7 +444,25 @@ export default function WorksheetEntryModal({ isOpen, onClose, template, onSucce
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSubmitting(true);
-    // Removing BOQ stock validation as per user request
+    setSubmitError(null);
+
+    // Validate BOQ stock against Calculated Quantity (reading diff)
+    if (selectedBoqItemId) {
+      const readingToField = fields.find(f => isReadingToField(f.field_key, f.field_label));
+      const readingFromKey = Object.keys(formData).find(k => isReadingFromField(k, ''));
+      
+      if (readingToField && readingFromKey && formData[readingFromKey] !== undefined && formData[readingToField.field_key] !== undefined && formData[readingToField.field_key] !== "") {
+        const rFrom = Number(formData[readingFromKey]);
+        const rTo = Number(formData[readingToField.field_key]);
+        const usageDiff = Math.abs(rTo - rFrom);
+        
+        if (usageDiff > availableQty) {
+          setSubmitError(`Calculated Quantity (${usageDiff}) cannot exceed Available Stock (${availableQty} ${unit}).`);
+          setSubmitting(false);
+          return;
+        }
+      }
+    }
 
     try {
       // Fetch Geolocation (Strictly require current location)
@@ -476,20 +508,7 @@ export default function WorksheetEntryModal({ isOpen, onClose, template, onSucce
         const k = (f.field_key || '').toLowerCase();
         const l = (f.field_label || '').toLowerCase();
 
-        const isGPS = k.includes('gps') || l.includes('gps') || ((k === 'location' || l === 'location') && f.field_type !== 'dropdown' && f.field_type !== 'text');
-        if (isGPS) {
-          parsedData[f.field_key] = { latitude: lat, longitude: lng };
-        }
-
-        const isTimestamp = k.includes('timestamp') || k.includes('time_stamp') || k.includes('stamp_time') ||
-          l.includes('timestamp') || l.includes('time stamp') || l.includes('stamp time');
-        if (isTimestamp) {
-          if (f.field_type === 'date') {
-            parsedData[f.field_key] = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
-          } else {
-            parsedData[f.field_key] = new Date().toISOString(); // Full ISO String
-          }
-        }
+        // GPS and Timestamp are now sent at the root level, so we don't inject them into parsedData
         
         if (isEngineerNameField(f.field_key, f.field_label)) {
           parsedData[f.field_key] = user?.name || user?.employee_name || rawUser?.name || rawUser?.employee_name || "";
@@ -497,7 +516,7 @@ export default function WorksheetEntryModal({ isOpen, onClose, template, onSucce
       });
 
       Object.keys(parsedData).forEach(key => {
-        if (key === 'boq_item_id') return;
+        // Allow parsing all keys normally
         
         const fieldDef = fields.find(f => f.field_key === key);
         if (fieldDef && (fieldDef.field_type === 'number' || fieldDef.field_type === 'formula')) {
@@ -514,16 +533,41 @@ export default function WorksheetEntryModal({ isOpen, onClose, template, onSucce
       const finalEmpId = Number(empId) !== 0 ? Number(empId) : Number(rawUser?.employee_id || rawUser?.id || 0);
       const finalSiteId = Number(sId) !== 0 ? Number(sId) : Number(rawUser?.site_id || rawUser?.assigned_site_id || 0);
 
+      if (selectedBoqItemId) {
+        parsedData.boq_item_id = Number(selectedBoqItemId);
+      }
+
+      // Map project_name to project_id for backend
+      const projectKey = Object.keys(parsedData).find(k => isProjectField(k, ''));
+      if (projectKey && parsedData[projectKey]) {
+        const projName = parsedData[projectKey];
+        const projObj = dynamicOptions?.projects?.find(p => p.project_name === projName);
+        if (projObj) {
+          delete parsedData[projectKey];
+          parsedData.project_id = projObj.project_id || projObj.id;
+        }
+      }
+
       const payload = {
         template_id: Number(template.template_id),
-        site_id: selectedSiteId ? Number(selectedSiteId) : finalSiteId,
-        employee_id: finalEmpId,
+        site_id: selectedSiteId ? Number(selectedSiteId) : (finalSiteId || null),
+        employee_id: finalEmpId || null,
         latitude: lat,
         longitude: lng,
         recorded_at: new Date().toISOString(),
-        boq_item_id: Number(selectedBoqItemId), // Injected at the root payload level
         data: parsedData,
       };
+
+      // Remove site_id if it's null
+      if (payload.site_id === null) {
+        delete payload.site_id;
+      }
+
+      // Remove engineer_name from data if it is empty string
+      const engineerKey = Object.keys(payload.data).find(k => isEngineerNameField(k, ''));
+      if (engineerKey && payload.data[engineerKey] === "") {
+        delete payload.data[engineerKey];
+      }
 
       console.log("Submitting Worksheet Payload:", JSON.stringify(payload, null, 2));
 
@@ -656,24 +700,26 @@ export default function WorksheetEntryModal({ isOpen, onClose, template, onSucce
               <div className="grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-2 gap-[var(--space-4)] sm:gap-[var(--space-5)]">
 
                 {/* Site Selection Dropdown (Root level requirement) */}
-                <div className="flex flex-col gap-[var(--space-1)] sm:col-span-2">
-                  <label className="text-[var(--text-xs)] font-semibold text-slate-600 flex items-center gap-1">
-                    Select Site <span className="text-red-500">*</span>
-                  </label>
-                  <select
-                    required
-                    value={selectedSiteId}
-                    onChange={(e) => setSelectedSiteId(e.target.value)}
-                    className="w-full h-[var(--input-height)] px-[var(--space-4)] rounded-[var(--radius-lg)] border border-[var(--color-secondary-border)] bg-white text-[var(--text-sm)] text-slate-800 focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-top)]/20 focus:border-[var(--color-primary-top)] transition-colors duration-150"
-                  >
-                    <option value="">Select a site...</option>
-                    {sites.map((s) => (
-                      <option key={s.id || s.site_id} value={s.id || s.site_id}>
-                        {s.site_name || s.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+                {fields.some(f => isSiteField(f.field_key, f.field_label)) && (
+                  <div className="flex flex-col gap-[var(--space-1)] sm:col-span-2">
+                    <label className="text-[var(--text-xs)] font-semibold text-slate-600 flex items-center gap-1">
+                      Select Site <span className="text-red-500">*</span>
+                    </label>
+                    <select
+                      required
+                      value={selectedSiteId}
+                      onChange={(e) => setSelectedSiteId(e.target.value)}
+                      className="w-full h-[var(--input-height)] px-[var(--space-4)] rounded-[var(--radius-lg)] border border-[var(--color-secondary-border)] bg-white text-[var(--text-sm)] text-slate-800 focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-top)]/20 focus:border-[var(--color-primary-top)] transition-colors duration-150"
+                    >
+                      <option value="">Select a site...</option>
+                      {sites.map((s) => (
+                        <option key={s.id || s.site_id} value={s.id || s.site_id}>
+                          {s.site_name || s.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
 
                 {/* BOQ Item Selection Dropdown (Root level requirement inside data) */}
                 <div className="flex flex-col gap-[var(--space-1)] sm:col-span-2">
@@ -687,7 +733,9 @@ export default function WorksheetEntryModal({ isOpen, onClose, template, onSucce
                     className="w-full h-[var(--input-height)] px-[var(--space-4)] rounded-[var(--radius-lg)] border border-[var(--color-secondary-border)] bg-white text-[var(--text-sm)] text-slate-800 focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-top)]/20 focus:border-[var(--color-primary-top)] transition-colors duration-150"
                   >
                     <option value="">Select a BOQ item...</option>
-                    {boqItems.map((b) => (
+                    {boqItems
+                      .filter(b => Number(b.in_hand_qty ?? b.boq_qty ?? 0) > 0)
+                      .map((b) => (
                       <option key={b.boq_item_id} value={b.boq_item_id}>
                         {b.name || b.boq_item_name}
                       </option>
@@ -700,9 +748,10 @@ export default function WorksheetEntryModal({ isOpen, onClose, template, onSucce
                   const isGPS = isGPSField(field.field_key, field.field_label, field.field_type);
                   const isTimestamp = isTimestampField(field.field_key, field.field_label);
                   const isEngineerName = isEngineerNameField(field.field_key, field.field_label);
+                  const isSite = isSiteField(field.field_key, field.field_label);
                   
-                  // Hide GPS, Timestamp, Formula, and auto-filled Engineer Name fields completely
-                  if (isGPS || isTimestamp || field.field_type === "formula" || isEngineerName) {
+                  // Hide GPS, Timestamp, Formula, auto-filled Engineer Name fields, and custom handled Site field completely
+                  if (isGPS || isTimestamp || field.field_type === "formula" || isEngineerName || isSite) {
                     return null;
                   }
 
@@ -747,8 +796,16 @@ export default function WorksheetEntryModal({ isOpen, onClose, template, onSucce
                             className={`${inputBase} bg-amber-50/60 border-amber-200 text-amber-800 font-semibold shadow-inner`}
                           />
                           {enhancedDynamicOptions?.availableBoqQty !== undefined && (
-                            <div className="flex items-center gap-[var(--space-2)] mt-[var(--space-1)] px-[var(--space-2)] py-[var(--space-1)] rounded-[var(--radius-md)] text-[var(--text-xs)] font-medium text-slate-700 bg-slate-50 border border-slate-200">
-                              Available Stock: {enhancedDynamicOptions.availableBoqQty} {enhancedDynamicOptions.boqUnit}
+                            <div className="flex flex-col gap-[var(--space-1)] mt-[var(--space-1)]">
+                              <div className="flex items-center gap-[var(--space-2)] px-[var(--space-2)] py-[var(--space-1)] rounded-[var(--radius-md)] text-[var(--text-xs)] font-medium text-slate-700 bg-slate-50 border border-slate-200 w-fit">
+                                Available Stock: {enhancedDynamicOptions.availableBoqQty} {enhancedDynamicOptions.boqUnit}
+                              </div>
+                              {usageDiff > enhancedDynamicOptions.availableBoqQty && (
+                                <div className="flex items-center gap-[var(--space-2)] px-[var(--space-2)] py-[var(--space-1)] rounded-[var(--radius-md)] text-[var(--text-xs)] font-medium text-red-700 bg-red-50 border border-red-200 w-fit">
+                                  <AlertCircle className="w-3.5 h-3.5" />
+                                  Calculated Quantity cannot exceed Available Stock!
+                                </div>
+                              )}
                             </div>
                           )}
                         </div>

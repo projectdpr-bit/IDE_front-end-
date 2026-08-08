@@ -32,6 +32,7 @@ import SupervisorHistoryPage from "@/features/supervisor/SupervisorHistoryPage";
 import SiteEngineerDashboard from "@/features/engineer/SiteEngineerDashboard";
 import EngineerPurchaseRequestsPage from "@/features/engineer/EngineerPurchaseRequestsPage";
 import EngineerSheetEntryPage from "@/features/engineer/EngineerSheetEntryPage";
+import EngineerHistoryPage from "@/features/engineer/EngineerHistoryPage";
 
 import ClientDashboard from "@/features/client/ClientDashboard";
 import StoreDashboard from "@/features/store/StoreDashboard";
@@ -92,6 +93,7 @@ export default function App() {
         <Route path="/engineer/dashboard" element={<ProtectedRoute><SiteEngineerDashboard /></ProtectedRoute>} />
         <Route path="/engineer/purchase-requests" element={<ProtectedRoute><EngineerPurchaseRequestsPage /></ProtectedRoute>} />
         <Route path="/engineer/sheet-entry" element={<ProtectedRoute><EngineerSheetEntryPage /></ProtectedRoute>} />
+        <Route path="/engineer/history" element={<ProtectedRoute><EngineerHistoryPage /></ProtectedRoute>} />
         <Route path="/supervisor/dashboard" element={<ProtectedRoute><SeniorSiteSupervisorDashboard /></ProtectedRoute>} />
         <Route path="/supervisor/purchase-requests" element={<ProtectedRoute><SupervisorPurchaseRequestsPage /></ProtectedRoute>} />
         <Route path="/supervisor/sheet-entry" element={<ProtectedRoute><SupervisorSheetEntryPage /></ProtectedRoute>} />

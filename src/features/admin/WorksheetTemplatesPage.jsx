@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useApiRefreshStore } from "@/store/useApiRefreshStore";
 import DashboardLayout from "@/layouts/DashboardLayout";
 import SideDrawer from "@/components/ui/SideDrawer";
 import apiClient from "@/lib/axios";
@@ -34,6 +35,7 @@ import {
 } from "lucide-react";
 
 const FeedbackMessage = ({ feedback }) => {
+  const refreshKey = useApiRefreshStore((state) => state.refreshKey);
   if (!feedback) return null;
   const isSuccess = feedback.type === 'success';
   return (
@@ -46,6 +48,7 @@ const FeedbackMessage = ({ feedback }) => {
 
 // Component to handle cascading system fields
 const CascadingSystemSource = ({ fieldData, onChange, sitesList, allFields = [] }) => {
+  const refreshKey = useApiRefreshStore((state) => state.refreshKey);
   const [projects, setProjects] = useState([]);
   const [subDivisions, setSubDivisions] = useState([]);
   const [feeders, setFeeders] = useState([]);
@@ -83,19 +86,19 @@ const CascadingSystemSource = ({ fieldData, onChange, sitesList, allFields = [] 
     if (inheritedProjectId && fieldData.temp_project_id !== inheritedProjectId && fieldData.system_category !== 'project') {
       onChange('temp_project_id', inheritedProjectId);
     }
-  }, [inheritedProjectId, fieldData.temp_project_id, fieldData.system_category]);
+  }, [inheritedProjectId, fieldData.temp_project_id, fieldData.system_category, refreshKey]);
 
   useEffect(() => {
     if (inheritedSubDiv && fieldData.temp_sub_division !== inheritedSubDiv && fieldData.system_category !== 'sub_division') {
       onChange('temp_sub_division', inheritedSubDiv);
     }
-  }, [inheritedSubDiv, fieldData.temp_sub_division, fieldData.system_category]);
+  }, [inheritedSubDiv, fieldData.temp_sub_division, fieldData.system_category, refreshKey]);
 
   useEffect(() => {
     if (inheritedFeeder && fieldData.temp_feeder !== inheritedFeeder && fieldData.system_category !== 'feeder') {
       onChange('temp_feeder', inheritedFeeder);
     }
-  }, [inheritedFeeder, fieldData.temp_feeder, fieldData.system_category]);
+  }, [inheritedFeeder, fieldData.temp_feeder, fieldData.system_category, refreshKey]);
 
   // Fetch Projects whenever it's needed
   useEffect(() => {
@@ -108,7 +111,7 @@ const CascadingSystemSource = ({ fieldData, onChange, sitesList, allFields = [] 
       };
       fetchProjects();
     }
-  }, [fieldData.system_category]);
+  }, [fieldData.system_category, refreshKey]);
 
   // Fetch Sub Divisions
   useEffect(() => {
@@ -121,7 +124,7 @@ const CascadingSystemSource = ({ fieldData, onChange, sitesList, allFields = [] 
       };
       fetchSubDivs();
     }
-  }, [fieldData.temp_project_id, fieldData.system_category]);
+  }, [fieldData.temp_project_id, fieldData.system_category, refreshKey]);
 
   // Fetch Feeders
   useEffect(() => {
@@ -134,7 +137,7 @@ const CascadingSystemSource = ({ fieldData, onChange, sitesList, allFields = [] 
       };
       fetchFeeders();
     }
-  }, [fieldData.temp_project_id, fieldData.temp_sub_division, fieldData.system_category]);
+  }, [fieldData.temp_project_id, fieldData.temp_sub_division, fieldData.system_category, refreshKey]);
 
   // Fetch Locations
   useEffect(() => {
@@ -147,7 +150,7 @@ const CascadingSystemSource = ({ fieldData, onChange, sitesList, allFields = [] 
       };
       fetchLocations();
     }
-  }, [fieldData.temp_project_id, fieldData.temp_sub_division, fieldData.temp_feeder, fieldData.system_category]);
+  }, [fieldData.temp_project_id, fieldData.temp_sub_division, fieldData.temp_feeder, fieldData.system_category, refreshKey]);
 
   return (
     <div className="col-span-1 md:col-span-2 space-y-[var(--space-3)] p-[var(--space-3)] bg-slate-50 border border-slate-200 rounded-[var(--radius-lg)]">
@@ -293,6 +296,7 @@ const CascadingSystemSource = ({ fieldData, onChange, sitesList, allFields = [] 
 };
 
 export default function WorksheetTemplatesPage() {
+  const refreshKey = useApiRefreshStore((state) => state.refreshKey);
   const [searchQuery, setSearchQuery] = useState("");
   
   const [showDrawer, setShowDrawer] = useState(false);
@@ -352,7 +356,7 @@ export default function WorksheetTemplatesPage() {
   useEffect(() => {
     fetchTemplates();
     fetchSites();
-  }, []);
+  }, [refreshKey]);
 
   const {
     values: formData,

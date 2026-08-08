@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useApiRefreshStore } from "@/store/useApiRefreshStore";
 import DashboardLayout from "@/layouts/DashboardLayout";
 import { Truck, Plus, Search, Loader2, Edit3, Trash2, PackagePlus, Download } from "lucide-react";
 import apiClient from "@/lib/axios";
@@ -11,6 +12,7 @@ import { saveAs } from "file-saver";
 const EMPTY_ITEM = { po_item_id: "", quantity: "" };
 
 export default function DIPage() {
+  const refreshKey = useApiRefreshStore((state) => state.refreshKey);
   const user = useAuthStore((s) => s.user);
 
   // ── list state
@@ -75,7 +77,7 @@ export default function DIPage() {
       fetchDIs();
       fetchDropdowns();
     }, 0);
-  }, []);
+  }, [refreshKey]);
 
   // ─────────────────────────────────────────────────────────
   // Drawer & Items helpers

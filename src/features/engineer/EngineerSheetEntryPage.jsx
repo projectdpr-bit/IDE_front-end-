@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from "react";
+import { useApiRefreshStore } from "@/store/useApiRefreshStore";
 import DashboardLayout from "@/layouts/DashboardLayout";
 import { FileSpreadsheet, Plus, FileText, Layers, RefreshCw } from "lucide-react";
 import apiClient from "@/lib/axios";
 import WorksheetEntryModal from "@/features/engineer/components/WorksheetEntryModal";
 
 export default function EngineerSheetEntryPage() {
+  const refreshKey = useApiRefreshStore((state) => state.refreshKey);
   const [templates, setTemplates] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -31,7 +33,7 @@ export default function EngineerSheetEntryPage() {
 
   useEffect(() => {
     fetchTemplates();
-  }, []);
+  }, [refreshKey]);
 
   return (
     <DashboardLayout>

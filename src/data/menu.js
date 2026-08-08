@@ -205,6 +205,10 @@ export const menu = {
     {
       name: "Sheet Entry",
       path: "/engineer/sheet-entry",
+    },
+    {
+      name: "History",
+      path: "/engineer/history",
     }
   ],
   "engineer": [
@@ -219,6 +223,10 @@ export const menu = {
     {
       name: "Sheet Entry",
       path: "/engineer/sheet-entry",
+    },
+    {
+      name: "History",
+      path: "/engineer/history",
     }
   ]
 };

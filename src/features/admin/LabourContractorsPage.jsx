@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useApiRefreshStore } from "@/store/useApiRefreshStore";
 import DashboardLayout from "@/layouts/DashboardLayout";
 import SideDrawer from "@/components/ui/SideDrawer";
 import apiClient from "@/lib/axios";
@@ -8,6 +9,7 @@ import { validators } from "@/utils/validation";
 import { Search, Plus, Users, Edit3, Trash2 } from "lucide-react";
 
 export default function LabourContractorsPage() {
+  const refreshKey = useApiRefreshStore((state) => state.refreshKey);
   const [searchQuery, setSearchQuery] = useState("");
   const [contractors, setContractors] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -32,7 +34,7 @@ export default function LabourContractorsPage() {
 
   useEffect(() => {
     fetchContractors();
-  }, []);
+  }, [refreshKey]);
 
   const {
     values: formData,

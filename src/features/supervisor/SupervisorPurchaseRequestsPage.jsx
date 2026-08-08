@@ -1,4 +1,5 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect } from "react";import { useApiRefreshStore } from "@/store/useApiRefreshStore";
+
 import DashboardLayout from "@/layouts/DashboardLayout";
 import { FileText, Plus, Loader2, AlertCircle, X, Trash2 } from "lucide-react";
 import apiClient from "@/lib/axios";
@@ -13,6 +14,7 @@ import { useAuthStore } from "@/store/useAuthStore";
 import { authStorage } from "@/utils/authStorage";
 
 export default function SupervisorPurchaseRequestsPage() {
+  const refreshKey = useApiRefreshStore((state) => state.refreshKey);
   const { user } = useAuthStore();
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -69,7 +71,7 @@ export default function SupervisorPurchaseRequestsPage() {
   useEffect(() => {
     fetchRequests();
     fetchDropdownData();
-  }, []);
+  }, [refreshKey]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;

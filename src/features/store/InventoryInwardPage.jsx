@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useApiRefreshStore } from "@/store/useApiRefreshStore";
 import DashboardLayout from "@/layouts/DashboardLayout";
 import { ArrowDownLeft, Search, Loader2, ChevronDown, ChevronUp, Plus } from "lucide-react";
 import apiClient from "@/lib/axios";
@@ -7,6 +8,7 @@ import ManualInwardPanel from "./components/ManualInwardPanel";
 import { formatIndianCurrency } from "@/utils/formatters";
 
 export default function InventoryInwardPage() {
+  const refreshKey = useApiRefreshStore((state) => state.refreshKey);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [inwardLogs, setInwardLogs] = useState([]);
@@ -31,7 +33,7 @@ export default function InventoryInwardPage() {
 
   useEffect(() => {
     fetchInwardLogs();
-  }, []);
+  }, [refreshKey]);
 
   const toggleRow = (id) => {
     const newExpanded = new Set(expandedRows);

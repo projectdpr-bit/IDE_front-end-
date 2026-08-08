@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useApiRefreshStore } from "@/store/useApiRefreshStore";
 import DashboardLayout from "@/layouts/DashboardLayout";
 import SideDrawer from "@/components/ui/SideDrawer";
 import apiClient from "@/lib/axios";
@@ -8,6 +9,7 @@ import { GET_ROLES_API, ADD_ROLE_API, EDIT_ROLE_API } from "@/utils/ApiHelper";
 import { Award, Search, Plus, Loader2, RefreshCw, AlertCircle, Edit3, Trash2 } from "lucide-react";
 
 export default function DesignationsPage() {
+  const refreshKey = useApiRefreshStore((state) => state.refreshKey);
   const [roles, setRoles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -59,7 +61,7 @@ export default function DesignationsPage() {
 
   useEffect(() => {
     fetchRoles();
-  }, []);
+  }, [refreshKey]);
 
   // Reset form when opening add drawer or edit role
   const handleOpenAddDrawer = () => {

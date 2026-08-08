@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useApiRefreshStore } from "@/store/useApiRefreshStore";
 import DashboardLayout from "@/layouts/DashboardLayout";
 import { Wrench, Search, Loader2, Info, Plus } from "lucide-react";
 import apiClient from "@/lib/axios";
@@ -44,7 +45,7 @@ function NewRepairPanel({ isOpen, onClose, onSuccess }) {
       };
       fetchDropdowns();
     }
-  }, [isOpen]);
+  }, [isOpen, refreshKey]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -183,6 +184,7 @@ function NewRepairPanel({ isOpen, onClose, onSuccess }) {
 }
 
 export default function RepairPage() {
+  const refreshKey = useApiRefreshStore((state) => state.refreshKey);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [repairItems, setRepairItems] = useState([]);
@@ -204,7 +206,7 @@ export default function RepairPage() {
 
   useEffect(() => {
     fetchRepairs();
-  }, []);
+  }, [refreshKey]);
 
   const filteredItems = repairItems.filter((item) =>
     item.repair_number?.toLowerCase().includes(searchQuery.toLowerCase()) ||

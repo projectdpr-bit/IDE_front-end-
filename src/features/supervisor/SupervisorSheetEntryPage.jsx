@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";import { useApiRefreshStore } from "@/store/useApiRefreshStore";
+
 import DashboardLayout from "@/layouts/DashboardLayout";
 import { FileSpreadsheet, Plus, FileText, Layers, RefreshCw } from "lucide-react";
 import apiClient from "@/lib/axios";
@@ -6,6 +7,7 @@ import WorksheetEntryModal from "@/features/engineer/components/WorksheetEntryMo
 import { GET_SUPERVISOR_WORKSHEET_TEMPLATES_API } from "@/utils/api/hr.api";
 
 export default function SupervisorSheetEntryPage() {
+  const refreshKey = useApiRefreshStore((state) => state.refreshKey);
   const [templates, setTemplates] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -31,7 +33,7 @@ export default function SupervisorSheetEntryPage() {
 
   useEffect(() => {
     fetchTemplates();
-  }, []);
+  }, [refreshKey]);
 
   return (
     <DashboardLayout>

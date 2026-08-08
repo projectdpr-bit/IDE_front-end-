@@ -4,7 +4,7 @@ import DashboardLayout from "@/layouts/DashboardLayout";
 import { CheckCircle, Loader2, AlertCircle, History, ListFilter, X } from "lucide-react";
 import apiClient from "@/lib/axios";
 import { 
-  GET_SUPERVISOR_HISTORY_ENTRIES_API
+  GET_ENGINEER_HISTORY_ENTRIES_API
 } from "@/utils/api/hr.api";
 import { useAuthStore } from "@/store/useAuthStore";
 
@@ -17,7 +17,7 @@ const formatKey = (key) => {
     .join(' ');
 };
 
-export default function SupervisorHistoryPage() {
+export default function EngineerHistoryPage() {
   const refreshKey = useApiRefreshStore((state) => state.refreshKey);
   const { user } = useAuthStore();
   const [entries, setEntries] = useState([]);
@@ -30,7 +30,7 @@ export default function SupervisorHistoryPage() {
   const [selectedFeeder, setSelectedFeeder] = useState("all");
   const [selectedLocation, setSelectedLocation] = useState("all");
 
-  const baseEntries = entries.filter(e => e.engineer_role?.toLowerCase() === "senior site supervisor");
+  const baseEntries = entries.filter(e => e.engineer_role?.toLowerCase() === "site engineer" && e.status?.toLowerCase() !== "rejected");
 
   const templates = Array.from(
     new Map(baseEntries.map(e => [e.template_id, e.template_title])).entries()
@@ -171,7 +171,7 @@ export default function SupervisorHistoryPage() {
     setLoading(true);
     setError(null);
     try {
-      const res = await apiClient.get(GET_SUPERVISOR_HISTORY_ENTRIES_API);
+      const res = await apiClient.get(GET_ENGINEER_HISTORY_ENTRIES_API);
       if (res.data?.success) {
         setEntries(res.data.data || []);
       } else {
@@ -202,7 +202,7 @@ export default function SupervisorHistoryPage() {
             </div>
             <div>
               <h1 className="text-[var(--text-xl)] font-bold text-slate-800 leading-tight">Worksheet History</h1>
-              <p className="text-[var(--text-xs)] text-slate-500 mt-[var(--space-1)]">View past worksheet entries.</p>
+              <p className="text-[var(--text-xs)] text-slate-500 mt-[var(--space-1)]">View your past worksheet entries.</p>
             </div>
           </div>
         </div>
@@ -329,7 +329,7 @@ export default function SupervisorHistoryPage() {
               <History className="w-[var(--icon-lg)] h-[var(--icon-lg)] text-slate-400" />
             </div>
             <h3 className="text-[var(--text-base)] font-bold text-slate-800 mb-1">No History Available</h3>
-            <p className="text-[var(--text-sm)] text-slate-500">There are no history entries available for your role.</p>
+            <p className="text-[var(--text-sm)] text-slate-500">You don't have any worksheet history entries.</p>
           </div>
         )}
 
@@ -424,8 +424,6 @@ export default function SupervisorHistoryPage() {
           </div>
         )}
       </div>
-
-
     </DashboardLayout>
   );
 }

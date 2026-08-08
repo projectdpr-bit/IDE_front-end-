@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from "react";
+import { useApiRefreshStore } from "@/store/useApiRefreshStore";
 import DashboardLayout from "@/layouts/DashboardLayout";
 import { FileText, Search, Loader2, AlertCircle, ChevronDown, ChevronUp } from "lucide-react";
 import apiClient from "@/lib/axios";
 import { GET_PROCUREMENT_PURCHASE_REQUESTS_API } from "@/utils/ApiHelper";
 
 export default function PurchaseRequestsPage() {
+  const refreshKey = useApiRefreshStore((state) => state.refreshKey);
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -31,7 +33,7 @@ export default function PurchaseRequestsPage() {
 
   useEffect(() => {
     fetchPurchaseRequests();
-  }, []);
+  }, [refreshKey]);
 
   const toggleRow = (prId) => {
     const newExpanded = new Set(expandedRows);

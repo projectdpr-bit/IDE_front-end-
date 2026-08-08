@@ -1,10 +1,12 @@
 import { useState, useEffect } from "react";
+import { useApiRefreshStore } from "@/store/useApiRefreshStore";
 import DashboardLayout from "@/layouts/DashboardLayout";
 import { useAuthStore } from "@/store/useAuthStore";
 import { CalendarCheck, MapPin, ClipboardList, CheckCircle2, Box } from "lucide-react";
 import apiClient from "@/lib/axios";
 
 export default function SiteEngineerDashboard() {
+  const refreshKey = useApiRefreshStore((state) => state.refreshKey);
   const { user } = useAuthStore();
   const [stockMatrix, setStockMatrix] = useState([]);
   const [loadingStock, setLoadingStock] = useState(true);
@@ -44,7 +46,7 @@ export default function SiteEngineerDashboard() {
       }
     };
     fetchStockMatrix();
-  }, [user]);
+  }, [user, refreshKey]);
 
   return (
     <DashboardLayout>

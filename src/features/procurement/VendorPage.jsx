@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useApiRefreshStore } from "@/store/useApiRefreshStore";
 import DashboardLayout from "@/layouts/DashboardLayout";
 import { Users, Plus, Search, Loader2, AlertCircle, Edit3, Trash2 } from "lucide-react";
 import apiClient from "@/lib/axios";
@@ -8,6 +9,7 @@ import { useForm } from "@/hooks/useForm";
 import { validators } from "@/utils/validation";
 
 export default function VendorPage() {
+  const refreshKey = useApiRefreshStore((state) => state.refreshKey);
   const [vendors, setVendors] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -131,7 +133,7 @@ export default function VendorPage() {
 
   useEffect(() => {
     fetchVendors();
-  }, []);
+  }, [refreshKey]);
 
   const filteredVendors = vendors.filter(
     (v) =>

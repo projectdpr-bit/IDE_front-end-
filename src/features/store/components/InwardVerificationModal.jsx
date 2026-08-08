@@ -1,4 +1,5 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect } from "react";import { useApiRefreshStore } from "@/store/useApiRefreshStore";
+
 import { UploadCloud, CheckCircle2, Edit3, X, Loader2, Save, AlertCircle, Plus, Trash2, FileText, Image as ImageIcon } from "lucide-react";
 import apiClient from "@/lib/axios";
 import { EXTRACT_INVOICE_IMAGES_API, STORE_STOCK_INWARD_API, GET_STORE_PO_BOQ_ITEMS_API } from "@/utils/ApiHelper";
@@ -6,6 +7,7 @@ import { useAuthStore } from "@/store/useAuthStore";
 import { formatIndianCurrency } from "@/utils/formatters";
 
 export default function InwardVerificationModal({ isOpen, onClose, selectedPO, onSuccess }) {
+  const refreshKey = useApiRefreshStore((state) => state.refreshKey);
   const { user } = useAuthStore();
   const [step, setStep] = useState("UPLOAD"); // UPLOAD, LOADING, VERIFY
   const [selectedFiles, setSelectedFiles] = useState([]);
@@ -30,7 +32,7 @@ export default function InwardVerificationModal({ isOpen, onClose, selectedPO, o
       }, 0);
       return () => clearTimeout(reset);
     }
-  }, [isOpen, selectedPO]);
+  }, [isOpen, selectedPO, refreshKey]);
 
   useEffect(() => {
     const fetchBoqItems = async () => {
@@ -50,7 +52,7 @@ export default function InwardVerificationModal({ isOpen, onClose, selectedPO, o
     
     // Always fetch if we have a poId, don't wait for isEditing
     fetchBoqItems();
-  }, [selectedPO?.po_id, selectedPO?.id, formData?.po_id]);
+  }, [selectedPO?.po_id, selectedPO?.id, formData?.po_id, refreshKey]);
 
 
   if (!isOpen) return null;

@@ -1,10 +1,12 @@
 import { useState, useEffect } from "react";
+import { useApiRefreshStore } from "@/store/useApiRefreshStore";
 import DashboardLayout from "@/layouts/DashboardLayout";
 import apiClient from "@/lib/axios";
 import { GET_PURCHASE_REQUESTS_API } from "@/utils/ApiHelper";
 import { HardHat, Search, Loader2, AlertCircle } from "lucide-react";
 
 export default function SeniorEngineerPage() {
+  const refreshKey = useApiRefreshStore((state) => state.refreshKey);
   const [searchQuery, setSearchQuery] = useState("");
   const [purchaseRequests, setPurchaseRequests] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -36,7 +38,7 @@ export default function SeniorEngineerPage() {
       fetchPurchaseRequests(true);
     };
     initFetch();
-  }, []);
+  }, [refreshKey]);
 
   const filteredPRs = purchaseRequests.filter(
     (pr) =>

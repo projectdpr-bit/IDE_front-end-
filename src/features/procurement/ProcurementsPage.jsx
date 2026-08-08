@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { useApiRefreshStore } from "@/store/useApiRefreshStore";
 import DashboardLayout from "@/layouts/DashboardLayout";
 import SideDrawer from "@/components/ui/SideDrawer";
 import apiClient from "@/lib/axios";
@@ -25,6 +26,7 @@ import {
 } from "lucide-react";
 
 export default function ProcurementsPage() {
+  const refreshKey = useApiRefreshStore((state) => state.refreshKey);
   const [activeTab, setActiveTab] = useState("vendor"); // 'vendor' (default), 'po', 'di'
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -80,7 +82,7 @@ export default function ProcurementsPage() {
   useEffect(() => {
     fetchVendors();
     fetchProjects();
-  }, []);
+  }, [refreshKey]);
 
   // 2. Purchase Orders (PO) Data State
   const [purchaseOrders, setPurchaseOrders] = useState([
@@ -175,7 +177,7 @@ export default function ProcurementsPage() {
         deliverySite: [validators.required],
       };
     }
-  }, [activeTab]);
+  }, [activeTab, refreshKey]);
 
   // Form State for Drawer via useForm hook
   const {

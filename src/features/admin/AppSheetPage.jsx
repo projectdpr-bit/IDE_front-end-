@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useApiRefreshStore } from "@/store/useApiRefreshStore";
 import DashboardLayout from "@/layouts/DashboardLayout";
 import SideDrawer from "@/components/ui/SideDrawer";
 import apiClient from "@/lib/axios";
@@ -16,6 +17,7 @@ import {
 } from "lucide-react";
 
 export default function AppSheetPage() {
+  const refreshKey = useApiRefreshStore((state) => state.refreshKey);
   const [searchQuery, setSearchQuery] = useState("");
   
   const [showDrawer, setShowDrawer] = useState(false);
@@ -49,7 +51,7 @@ export default function AppSheetPage() {
 
   useEffect(() => {
     fetchDatasets();
-  }, []);
+  }, [refreshKey]);
 
   const {
     values: formData,

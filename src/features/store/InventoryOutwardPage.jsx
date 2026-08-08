@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useApiRefreshStore } from "@/store/useApiRefreshStore";
 import DashboardLayout from "@/layouts/DashboardLayout";
 import { ArrowUpRight, Search, Loader2, ChevronDown, ChevronUp, Plus } from "lucide-react";
 import apiClient from "@/lib/axios";
@@ -6,6 +7,7 @@ import { STORE_STOCK_OUTWARD_API } from "@/utils/ApiHelper";
 import ManualOutwardPanel from "./components/ManualOutwardPanel";
 
 export default function InventoryOutwardPage() {
+  const refreshKey = useApiRefreshStore((state) => state.refreshKey);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [outwardLogs, setOutwardLogs] = useState([]);
@@ -30,7 +32,7 @@ export default function InventoryOutwardPage() {
 
   useEffect(() => {
     fetchOutwardLogs();
-  }, []);
+  }, [refreshKey]);
 
   const toggleRow = (id) => {
     const newExpanded = new Set(expandedRows);

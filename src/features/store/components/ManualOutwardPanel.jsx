@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useApiRefreshStore } from "@/store/useApiRefreshStore";
 import { X, Plus, Trash2, Save, Loader2 } from "lucide-react";
 import apiClient from "@/lib/axios";
 import { authStorage } from "@/utils/authStorage";
@@ -11,6 +12,7 @@ import {
 } from "@/utils/ApiHelper";
 
 export default function ManualOutwardPanel({ isOpen, onClose, onSuccess }) {
+  const refreshKey = useApiRefreshStore((state) => state.refreshKey);
   const [loading, setLoading] = useState(false);
   const [stores, setStores] = useState([]);
   const [sites, setSites] = useState([]);
@@ -32,7 +34,7 @@ export default function ManualOutwardPanel({ isOpen, onClose, onSuccess }) {
       fetchDropdowns();
       setFormData(initialFormState);
     }
-  }, [isOpen]);
+  }, [isOpen, refreshKey]);
 
   const fetchDropdowns = async () => {
     try {

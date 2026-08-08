@@ -1,5 +1,6 @@
 import axios from "axios";
 import { authStorage } from "@/utils/authStorage";
+import { useApiRefreshStore } from "@/store/useApiRefreshStore";
 
 const apiClient = axios.create({
   baseURL: "",
@@ -24,7 +25,15 @@ apiClient.interceptors.request.use(
 
 // Response Interceptor: Handle 401 Unauthenticated security responses
 apiClient.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    const method = response.config?.method?.toLowerCase();
+    if (['post', 'put', 'delete'].includes(method)) {
+      setTimeout(() => {
+        useApiRefreshStore.getState().triggerRefresh();
+      }, 500);
+    }
+    return response;
+  },
   (error) => {
     if (error.response?.status === 401) {
       // Clear invalid session & redirect to login if 401 Unauthorized

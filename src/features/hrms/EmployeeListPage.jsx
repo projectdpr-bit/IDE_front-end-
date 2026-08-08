@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useApiRefreshStore } from "@/store/useApiRefreshStore";
 import DashboardLayout from "@/layouts/DashboardLayout";
 import SideDrawer from "@/components/ui/SideDrawer";
 import { Users, Plus, Search } from "lucide-react";
@@ -6,6 +7,7 @@ import apiClient from "@/lib/axios";
 import { GET_HR_API } from "@/utils/api/hr.api";
 
 export default function EmployeeListPage() {
+  const refreshKey = useApiRefreshStore((state) => state.refreshKey);
   const [employees, setEmployees] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -31,7 +33,7 @@ export default function EmployeeListPage() {
 
   useEffect(() => {
     fetchEmployees();
-  }, []);
+  }, [refreshKey]);
 
   const handleAddEmployee = async (e) => {
     e.preventDefault();
