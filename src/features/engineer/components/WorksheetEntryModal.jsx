@@ -12,6 +12,36 @@ import {
 import apiClient from "@/lib/axios";
 import { useAuthStore } from "@/store/useAuthStore";
 
+// ─── Field Matching Helpers ────────────────────────────────────────────────────
+// Aggressively normalizes strings: "Project_Name" -> "projectname", "Sub Division" -> "subdivision"
+const normalizeString = (str) => {
+  if (!str) return '';
+  return str.toLowerCase().replace(/[^a-z0-9]/g, '');
+};
+
+const matchField = (key, label, keywords) => {
+  const k = normalizeString(key);
+  const l = normalizeString(label);
+  return keywords.some(kw => {
+    const normKw = normalizeString(kw);
+    return k.includes(normKw) || l.includes(normKw);
+  });
+};
+
+const isProjectField = (k, l) => matchField(k, l, ['project']);
+const isSubDivisionField = (k, l) => matchField(k, l, ['subdivision']);
+const isFeederField = (k, l) => matchField(k, l, ['feeder']);
+const isLocationField = (k, l) => matchField(k, l, ['location']);
+const isReadingFromField = (k, l) => matchField(k, l, ['readingfrom', 'startreading', 'previousreading', 'meterfrom', 'meterstart']);
+const isReadingToField = (k, l) => matchField(k, l, ['readingto', 'endreading', 'currentreading', 'finalreading', 'meterto', 'meterend']);
+const isGPSField = (k, l, type) => {
+  if (matchField(k, l, ['gps', 'latitude', 'longitude', 'coordinates'])) return true;
+  if (matchField(k, l, ['location']) && type !== 'dropdown' && type !== 'text') return true;
+  return false;
+};
+const isTimestampField = (k, l) => matchField(k, l, ['timestamp', 'stamptime']);
+const isEngineerNameField = (k, l) => matchField(k, l, ['engineer', 'engineername', 'nameengineer']);
+
 // ─── Formula Evaluator ────────────────────────────────────────────────────────
 // Safely evaluates a formula string like "reading_from + reading_to"
 // by substituting known field keys with their numeric values.
@@ -20,7 +50,7 @@ function evaluateFormula(formulaStr, formData) {
   try {
     // Standardize 'abs(' to 'Math.abs('
     let expr = formulaStr.replace(/\babs\(/g, "Math.abs(");
-    
+
     Object.keys(formData).forEach((key) => {
       const val = Number(formData[key]) || 0;
       expr = expr.split(key).join(String(val));
@@ -43,52 +73,35 @@ function evaluateFormula(formulaStr, formData) {
 function DynamicField({ field, value, onChange, dynamicOptions, formData }) {
   const { field_label, field_key, field_type, is_required, configuration } = field;
 
+  let actualFieldType = field_type;
+  if (isProjectField(field_key, field_label) || 
+      isSubDivisionField(field_key, field_label) || 
+      isFeederField(field_key, field_label) || 
+      isLocationField(field_key, field_label)) {
+    actualFieldType = "dropdown";
+  }
+
   const inputBase =
     "w-full h-[var(--input-height)] px-[var(--space-4)] rounded-[var(--radius-lg)] border border-[var(--color-secondary-border)] bg-white text-[var(--text-sm)] text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-top)]/20 focus:border-[var(--color-primary-top)] transition-colors duration-150 disabled:bg-slate-50 disabled:text-slate-400 disabled:cursor-not-allowed";
 
   let dropdownOptions = [];
-  if (field_type === "dropdown") {
-    const lowerKey = field_key.toLowerCase();
-    if (lowerKey === 'project_id' || lowerKey === 'project') {
-      dropdownOptions = (dynamicOptions?.projects || []).map(p => ({ label: p.project_name, value: String(p.project_id) }));
-    } else if (lowerKey === 'sub_division' || lowerKey === 'sub_divisions') {
+  if (actualFieldType === "dropdown") {
+    if (isProjectField(field_key, field_label)) {
+      dropdownOptions = (dynamicOptions?.projects || []).map(p => ({ label: p.project_name, value: p.project_name }));
+    } else if (isSubDivisionField(field_key, field_label)) {
       dropdownOptions = (dynamicOptions?.sub_divisions || []).map(s => ({ label: s, value: s }));
-    } else if (lowerKey === 'feeder' || lowerKey === 'feeders') {
+    } else if (isFeederField(field_key, field_label)) {
       dropdownOptions = (dynamicOptions?.feeders || []).map(f => ({ label: f, value: f }));
-    } else if (lowerKey === 'location' || lowerKey === 'location_from' || lowerKey === 'location_to') {
+    } else if (isLocationField(field_key, field_label)) {
       dropdownOptions = (dynamicOptions?.locations || []).map(l => ({ label: l.location, value: l.location }));
     } else {
       dropdownOptions = (configuration?.options || []).map(opt => ({ label: opt, value: opt }));
     }
   }
 
-  const isReadingTo = (field_key || '').toLowerCase() === 'reading_to' || (field_key || '').toLowerCase() === 'reading to';
-  const readingFromKey = formData ? Object.keys(formData).find(k => k.toLowerCase() === 'reading_from' || k.toLowerCase() === 'reading from') : null;
-  
-  let usageDiff = null;
-  if (isReadingTo && readingFromKey && formData[readingFromKey] !== undefined && value !== undefined && value !== "") {
-    const rFrom = Number(formData[readingFromKey]);
-    const rTo = Number(value);
-    usageDiff = Math.abs(rTo - rFrom);
-  }
-
-  const isGPS = 
-    (field_key || '').toLowerCase().includes('gps') || 
-    (field_label || '').toLowerCase().includes('gps') || 
-    (((field_key || '').toLowerCase() === 'location' || (field_label || '').toLowerCase() === 'location') && field_type !== 'dropdown');
-
-  const isTimestamp = 
-    (field_key || '').toLowerCase().includes('timestamp') || 
-    (field_key || '').toLowerCase().includes('time_stamp') || 
-    (field_key || '').toLowerCase().includes('stamp_time') || 
-    (field_label || '').toLowerCase().includes('timestamp') || 
-    (field_label || '').toLowerCase().includes('time stamp') || 
-    (field_label || '').toLowerCase().includes('stamp time');
-
-  // Hide GPS, Timestamp, and Formula fields from the frontend completely
-  if (isGPS || isTimestamp || field_type === "formula") {
-    return null;
-  }
+  const isGPS = isGPSField(field_key, field_label, field_type);
+  const isTimestamp = isTimestampField(field_key, field_label);
+  const isEngineerName = isEngineerNameField(field_key, field_label);
 
   return (
     <div className="flex flex-col gap-[var(--space-1)]">
@@ -106,7 +119,7 @@ function DynamicField({ field, value, onChange, dynamicOptions, formData }) {
         )}
       </label>
 
-      {field_type === "number" && (
+      {actualFieldType === "number" && (
         <input
           id={`field-${field_key}`}
           type="number"
@@ -118,7 +131,7 @@ function DynamicField({ field, value, onChange, dynamicOptions, formData }) {
         />
       )}
 
-      {field_type === "text" && (
+      {actualFieldType === "text" && (
         <input
           id={`field-${field_key}`}
           type="text"
@@ -130,7 +143,7 @@ function DynamicField({ field, value, onChange, dynamicOptions, formData }) {
         />
       )}
 
-      {field_type === "date" && (
+      {actualFieldType === "date" && (
         <input
           id={`field-${field_key}`}
           type="date"
@@ -141,7 +154,7 @@ function DynamicField({ field, value, onChange, dynamicOptions, formData }) {
         />
       )}
 
-      {field_type === "dropdown" && (
+      {actualFieldType === "dropdown" && (
         <select
           id={`field-${field_key}`}
           required={is_required}
@@ -156,31 +169,6 @@ function DynamicField({ field, value, onChange, dynamicOptions, formData }) {
             </option>
           ))}
         </select>
-      )}
-
-      {isReadingTo && usageDiff !== null && (
-        <div className="flex flex-col gap-[var(--space-1)] mt-[var(--space-3)] pt-[var(--space-3)] border-t border-[var(--color-layout-border)]">
-          <label className="text-[var(--text-xs)] font-semibold text-slate-600 flex items-center gap-1">
-            Total Cable
-            <span className="text-red-500">*</span>
-            <span className="inline-flex items-center gap-0.5 px-[var(--space-2)] py-px rounded-full bg-amber-100 text-amber-700 text-[var(--text-2xs)] font-bold uppercase tracking-wide ml-1">
-              <Calculator className="w-2.5 h-2.5" />
-              Auto
-            </span>
-          </label>
-          <input
-            type="number"
-            disabled
-            value={usageDiff ?? 0}
-            className={`${inputBase} bg-amber-50/60 border-amber-200 text-amber-800 font-semibold`}
-          />
-          {dynamicOptions?.availableBoqQty !== undefined && (
-            <p className={`text-[var(--text-xs)] mt-1 ${usageDiff <= dynamicOptions.availableBoqQty ? 'text-green-600' : 'text-red-600 font-semibold'}`}>
-              Available Stock: {dynamicOptions.availableBoqQty} {dynamicOptions.boqUnit}
-              {usageDiff > dynamicOptions.availableBoqQty && " (Exceeds available stock!)"}
-            </p>
-          )}
-        </div>
       )}
     </div>
   );
@@ -277,25 +265,12 @@ export default function WorksheetEntryModal({ isOpen, onClose, template, onSucce
     fetchSites();
   }, [isOpen, baseUrl, apiPrefix]);
 
-  // Fetch BOQ Items (Stock Matrix)
+  // Fetch BOQ Items (Stock Matrix / BOQ Item Lines)
   useEffect(() => {
     if (!isOpen) return;
     const fetchBoqItems = async () => {
       try {
-        let rawUser = null;
-        try {
-          const authData = localStorage.getItem('auth-storage');
-          if (authData) {
-            const parsedAuth = JSON.parse(authData);
-            rawUser = parsedAuth?.state?.user || parsedAuth?.user || parsedAuth;
-          }
-        } catch(e) {}
-        
-        const empId = user?.employee_id || user?.employeeId || user?.id || user?.userId || rawUser?.employee_id || rawUser?.id || 0;
-        
-        if (!empId) return;
-
-        const res = await apiClient.get(`${baseUrl}${apiPrefix}/stock-matrix?employee_id=${empId}`);
+        const res = await apiClient.get(`${baseUrl}${apiPrefix}/boq-item-lines`);
         if (res.data?.success) {
           setBoqItems(res.data.data || []);
         }
@@ -304,7 +279,7 @@ export default function WorksheetEntryModal({ isOpen, onClose, template, onSucce
       }
     };
     fetchBoqItems();
-  }, [isOpen, baseUrl, apiPrefix, user]);
+  }, [isOpen, baseUrl, apiPrefix]);
 
   // Fetch dynamic cascading dropdown options
   useEffect(() => {
@@ -320,9 +295,21 @@ export default function WorksheetEntryModal({ isOpen, onClose, template, onSucce
       }
     };
     fetchProjects();
-  }, [isOpen, baseUrl]);
+  }, [isOpen, baseUrl, apiPrefix]);
 
-  const projectId = formData['project_id'] || formData['project'];
+  const getFieldValue = useCallback((isFieldFunc) => {
+    for (let f of fields) {
+      if (isFieldFunc(f.field_key, f.field_label)) {
+        return formData[f.field_key];
+      }
+    }
+    return undefined;
+  }, [fields, formData]);
+
+  const projectVal = getFieldValue(isProjectField);
+  const selectedProjectObj = (dynamicOptions.projects || []).find(p => p.project_name === projectVal);
+  const projectId = selectedProjectObj ? selectedProjectObj.project_id : null;
+  
   useEffect(() => {
     if (!projectId) {
       setDynamicOptions(prev => ({ ...prev, sub_divisions: [] }));
@@ -339,9 +326,9 @@ export default function WorksheetEntryModal({ isOpen, onClose, template, onSucce
       }
     };
     fetchSubDivisions();
-  }, [projectId, baseUrl]);
+  }, [projectId, baseUrl, apiPrefix]);
 
-  const subDivision = formData['sub_division'] || formData['sub_divisions'];
+  const subDivision = getFieldValue(isSubDivisionField);
   useEffect(() => {
     if (!subDivision) {
       setDynamicOptions(prev => ({ ...prev, feeders: [] }));
@@ -358,9 +345,9 @@ export default function WorksheetEntryModal({ isOpen, onClose, template, onSucce
       }
     };
     fetchFeeders();
-  }, [subDivision, baseUrl]);
+  }, [subDivision, baseUrl, apiPrefix]);
 
-  const feeder = formData['feeder'] || formData['feeders'];
+  const feeder = getFieldValue(isFeederField);
   useEffect(() => {
     if (!feeder) {
       setDynamicOptions(prev => ({ ...prev, locations: [] }));
@@ -377,30 +364,32 @@ export default function WorksheetEntryModal({ isOpen, onClose, template, onSucce
       }
     };
     fetchLocations();
-  }, [feeder, baseUrl]);
+  }, [feeder, baseUrl, apiPrefix]);
 
   // Handle input change and recalculate formula fields in real-time
   const handleInputChange = useCallback(
     (fieldKey, value) => {
       setFormData((prev) => {
         const updated = { ...prev, [fieldKey]: value };
-        
+
         // Reset dependent cascading fields
-        const lowerKey = fieldKey.toLowerCase();
-        fields.forEach(f => {
-            const k = f.field_key.toLowerCase();
-            const isSubDiv = k === 'sub_division' || k === 'sub_divisions';
-            const isFeeder = k === 'feeder' || k === 'feeders';
-            const isLoc = k === 'location' || k === 'location_from' || k === 'location_to';
-            
-            if (lowerKey === 'project_id' || lowerKey === 'project') {
-                if (isSubDiv || isFeeder || isLoc) updated[f.field_key] = '';
-            } else if (lowerKey === 'sub_division' || lowerKey === 'sub_divisions') {
-                if (isFeeder || isLoc) updated[f.field_key] = '';
-            } else if (lowerKey === 'feeder' || lowerKey === 'feeders') {
-                if (isLoc) updated[f.field_key] = '';
+        const changedFieldObj = fields.find(xf => xf.field_key === fieldKey);
+        
+        if (changedFieldObj) {
+          fields.forEach(f => {
+            const isSubDiv = isSubDivisionField(f.field_key, f.field_label);
+            const isFeeder = isFeederField(f.field_key, f.field_label);
+            const isLoc = isLocationField(f.field_key, f.field_label);
+
+            if (isProjectField(changedFieldObj.field_key, changedFieldObj.field_label)) {
+              if (isSubDiv || isFeeder || isLoc) updated[f.field_key] = '';
+            } else if (isSubDivisionField(changedFieldObj.field_key, changedFieldObj.field_label)) {
+              if (isFeeder || isLoc) updated[f.field_key] = '';
+            } else if (isFeederField(changedFieldObj.field_key, changedFieldObj.field_label)) {
+              if (isLoc) updated[f.field_key] = '';
             }
-        });
+          });
+        }
 
         fields.forEach((f) => {
           if (f.field_type === "formula") {
@@ -412,7 +401,7 @@ export default function WorksheetEntryModal({ isOpen, onClose, template, onSucce
               const rTo = Number(updated['reading_to'] || updated['reading to'] || 0);
               updated[f.field_key] = Math.abs(rTo - rFrom);
             }
-            
+
             // Enforce non-negative for the calculated field
             if (Number(updated[f.field_key]) < 0) {
               updated[f.field_key] = Math.abs(updated[f.field_key]);
@@ -427,9 +416,9 @@ export default function WorksheetEntryModal({ isOpen, onClose, template, onSucce
 
   // Calculate selected BOQ available quantity
   const selectedBoqItem = boqItems.find(b => String(b.boq_item_id) === String(selectedBoqItemId));
-  const availableQty = selectedBoqItem ? Number(selectedBoqItem.in_hand_qty) : 0;
+  const availableQty = selectedBoqItem ? Number(selectedBoqItem.boq_qty ?? selectedBoqItem.in_hand_qty ?? 0) : 0;
   const unit = selectedBoqItem?.unit || "";
-  
+
   // Inject BOQ data into dynamicOptions for the DynamicField to read
   const enhancedDynamicOptions = {
     ...dynamicOptions,
@@ -441,20 +430,7 @@ export default function WorksheetEntryModal({ isOpen, onClose, template, onSucce
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSubmitting(true);
-    setSubmitError(null);
-    setSubmitSuccess(null);
-
-    // Validate Formula Field (Calculated quantity) against in_hand_qty
-    const formulaField = fields.find(f => f.field_type === 'formula');
-    
-    if (selectedBoqItemId && formulaField) {
-      const calculatedVal = Number(formData[formulaField.field_key] || 0);
-      if (calculatedVal > availableQty) {
-        setSubmitError(`${formulaField.field_label || 'Calculated Quantity'} (${calculatedVal}) exceeds the available stock (${availableQty} ${unit}).`);
-        setSubmitting(false);
-        return;
-      }
-    }
+    // Removing BOQ stock validation as per user request
 
     try {
       // Fetch Geolocation (Strictly require current location)
@@ -466,10 +442,10 @@ export default function WorksheetEntryModal({ isOpen, onClose, template, onSucce
             reject(new Error("Geolocation is not supported by your browser."));
             return;
           }
-          navigator.geolocation.getCurrentPosition(resolve, reject, { 
-            enableHighAccuracy: true, 
-            timeout: 15000, 
-            maximumAge: 0 
+          navigator.geolocation.getCurrentPosition(resolve, reject, {
+            enableHighAccuracy: true,
+            timeout: 15000,
+            maximumAge: 0
           });
         });
         if (position) {
@@ -484,20 +460,29 @@ export default function WorksheetEntryModal({ isOpen, onClose, template, onSucce
       }
 
       // Ensure numeric values in formData are actual numbers where appropriate
-      const parsedData = { ...formData, boq_item_id: Number(selectedBoqItemId) };
-      
-      // Auto-fill hidden fields (GPS and Timestamp)
+      const parsedData = { ...formData }; // DO NOT inject boq_item_id inside data here anymore
+
+      let rawUser = null;
+      try {
+        const authData = localStorage.getItem('auth-storage');
+        if (authData) {
+          const parsedAuth = JSON.parse(authData);
+          rawUser = parsedAuth?.state?.user || parsedAuth?.user || parsedAuth;
+        }
+      } catch (e) { }
+
+      // Auto-fill hidden fields (GPS and Timestamp and Engineer Name)
       fields.forEach(f => {
         const k = (f.field_key || '').toLowerCase();
         const l = (f.field_label || '').toLowerCase();
-        
-        const isGPS = k.includes('gps') || l.includes('gps') || ((k === 'location' || l === 'location') && f.field_type !== 'dropdown');
+
+        const isGPS = k.includes('gps') || l.includes('gps') || ((k === 'location' || l === 'location') && f.field_type !== 'dropdown' && f.field_type !== 'text');
         if (isGPS) {
           parsedData[f.field_key] = { latitude: lat, longitude: lng };
         }
 
-        const isTimestamp = k.includes('timestamp') || k.includes('time_stamp') || k.includes('stamp_time') || 
-                            l.includes('timestamp') || l.includes('time stamp') || l.includes('stamp time');
+        const isTimestamp = k.includes('timestamp') || k.includes('time_stamp') || k.includes('stamp_time') ||
+          l.includes('timestamp') || l.includes('time stamp') || l.includes('stamp time');
         if (isTimestamp) {
           if (f.field_type === 'date') {
             parsedData[f.field_key] = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
@@ -505,28 +490,27 @@ export default function WorksheetEntryModal({ isOpen, onClose, template, onSucce
             parsedData[f.field_key] = new Date().toISOString(); // Full ISO String
           }
         }
+        
+        if (isEngineerNameField(f.field_key, f.field_label)) {
+          parsedData[f.field_key] = user?.name || user?.employee_name || rawUser?.name || rawUser?.employee_name || "";
+        }
       });
 
       Object.keys(parsedData).forEach(key => {
-        const val = parsedData[key];
-        if (typeof val !== 'object' && !isNaN(val) && val !== '' && val !== null) {
-          parsedData[key] = Number(val);
+        if (key === 'boq_item_id') return;
+        
+        const fieldDef = fields.find(f => f.field_key === key);
+        if (fieldDef && (fieldDef.field_type === 'number' || fieldDef.field_type === 'formula')) {
+          const val = parsedData[key];
+          if (val !== '' && val !== null && !isNaN(val)) {
+            parsedData[key] = Number(val);
+          }
         }
       });
 
       const empId = user?.employee_id || user?.employeeId || user?.id || user?.userId || 0;
       const sId = user?.site_id || user?.siteId || user?.assigned_site_id || user?.assignedSiteId || 0;
 
-      // Extract raw user from localStorage just in case useAuthStore format masks the original keys
-      let rawUser = null;
-      try {
-        const authData = localStorage.getItem('auth-storage'); // Update this key if different
-        if (authData) {
-          const parsedAuth = JSON.parse(authData);
-          rawUser = parsedAuth?.state?.user || parsedAuth?.user || parsedAuth;
-        }
-      } catch(e) {}
-      
       const finalEmpId = Number(empId) !== 0 ? Number(empId) : Number(rawUser?.employee_id || rawUser?.id || 0);
       const finalSiteId = Number(sId) !== 0 ? Number(sId) : Number(rawUser?.site_id || rawUser?.assigned_site_id || 0);
 
@@ -537,10 +521,11 @@ export default function WorksheetEntryModal({ isOpen, onClose, template, onSucce
         latitude: lat,
         longitude: lng,
         recorded_at: new Date().toISOString(),
+        boq_item_id: Number(selectedBoqItemId), // Injected at the root payload level
         data: parsedData,
       };
-      
-      console.log("Submitting Worksheet Payload:", payload);
+
+      console.log("Submitting Worksheet Payload:", JSON.stringify(payload, null, 2));
 
       const res = await apiClient.post(
         `${baseUrl}${apiPrefix}/work-sheet-entries`,
@@ -548,29 +533,33 @@ export default function WorksheetEntryModal({ isOpen, onClose, template, onSucce
       );
 
       if (res.data?.success) {
-        const code = res.data.data?.entry_code || "WSE-OK";
-        setSubmitSuccess(`Entry submitted successfully! Code: ${code}`);
+        setSubmitSuccess("Entry submitted successfully!");
         setTimeout(() => {
           onSuccess?.();
           onClose();
-        }, 1800);
+        }, 5000);
       } else {
         setSubmitError(res.data?.message || "Submission failed.");
       }
     } catch (err) {
       console.error("API Submission Error:", err.response?.data || err);
-      let errMsg = err?.response?.data?.message || err.message || "Submission failed.";
+      let errMsg = "Submission failed.";
       
-      // Attempt to extract validation errors if provided by the backend
-      const validationErrors = err?.response?.data?.errors;
-      if (validationErrors) {
-        if (Array.isArray(validationErrors)) {
-          errMsg += " - " + validationErrors.map(e => e.msg || e.message || JSON.stringify(e)).join(", ");
-        } else if (typeof validationErrors === 'object') {
-          errMsg += " - " + JSON.stringify(validationErrors);
+      // Aggressively extract backend validation details to show the exact 400 error in the UI
+      if (err?.response?.data) {
+        const d = err.response.data;
+        if (typeof d === 'string') {
+          errMsg = d;
+        } else {
+          errMsg = d.message || errMsg;
+          if (d.errors) errMsg += " | " + JSON.stringify(d.errors);
+          if (d.error) errMsg += " | " + JSON.stringify(d.error);
+          if (d.details) errMsg += " | " + JSON.stringify(d.details);
         }
+      } else if (err.message) {
+        errMsg = err.message;
       }
-      
+
       setSubmitError(errMsg);
     } finally {
       setSubmitting(false);
@@ -665,7 +654,7 @@ export default function WorksheetEntryModal({ isOpen, onClose, template, onSucce
           {!loadingFields && !fieldsError && fields.length > 0 && (
             <form id="worksheet-entry-form" onSubmit={handleSubmit}>
               <div className="grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-2 gap-[var(--space-4)] sm:gap-[var(--space-5)]">
-                
+
                 {/* Site Selection Dropdown (Root level requirement) */}
                 <div className="flex flex-col gap-[var(--space-1)] sm:col-span-2">
                   <label className="text-[var(--text-xs)] font-semibold text-slate-600 flex items-center gap-1">
@@ -707,20 +696,66 @@ export default function WorksheetEntryModal({ isOpen, onClose, template, onSucce
                 </div>
 
                 {/* Dynamic Fields */}
-                {fields.map((field) => (
-                  <div
-                    key={field.field_id ?? field.field_key}
-                    className={field.field_type === "formula" ? "sm:col-span-2" : ""}
-                  >
-                    <DynamicField
-                      field={field}
-                      value={formData[field.field_key]}
-                      onChange={handleInputChange}
-                      dynamicOptions={enhancedDynamicOptions}
-                      formData={formData}
-                    />
-                  </div>
-                ))}
+                {fields.map((field) => {
+                  const isGPS = isGPSField(field.field_key, field.field_label, field.field_type);
+                  const isTimestamp = isTimestampField(field.field_key, field.field_label);
+                  const isEngineerName = isEngineerNameField(field.field_key, field.field_label);
+                  
+                  // Hide GPS, Timestamp, Formula, and auto-filled Engineer Name fields completely
+                  if (isGPS || isTimestamp || field.field_type === "formula" || isEngineerName) {
+                    return null;
+                  }
+
+                  const isReadingTo = isReadingToField(field.field_key, field.field_label);
+                  const readingFromKey = Object.keys(formData).find(k => isReadingFromField(k, ''));
+                  let usageDiff = null;
+                  
+                  if (isReadingTo && readingFromKey && formData[readingFromKey] !== undefined && formData[field.field_key] !== undefined && formData[field.field_key] !== "") {
+                    const rFrom = Number(formData[readingFromKey]);
+                    const rTo = Number(formData[field.field_key]);
+                    usageDiff = Math.abs(rTo - rFrom);
+                  }
+
+                  const inputBase = "w-full h-[var(--input-height)] px-[var(--space-4)] rounded-[var(--radius-lg)] border border-[var(--color-secondary-border)] bg-white text-[var(--text-sm)] text-slate-800 focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-top)]/20 transition-colors duration-150 disabled:bg-slate-50 disabled:text-slate-400 disabled:cursor-not-allowed";
+
+                  return (
+                    <React.Fragment key={field.field_id ?? field.field_key}>
+                      <div className={field.field_type === "formula" ? "sm:col-span-2" : ""}>
+                        <DynamicField
+                          field={field}
+                          value={formData[field.field_key]}
+                          onChange={handleInputChange}
+                          dynamicOptions={enhancedDynamicOptions}
+                          formData={formData}
+                        />
+                      </div>
+
+                      {isReadingTo && usageDiff !== null && (
+                        <div className="sm:col-span-2 flex flex-col gap-[var(--space-1)] p-[var(--space-4)] bg-amber-50/30 border border-amber-100 rounded-[var(--radius-xl)] shadow-sm">
+                          <label className="text-[var(--text-xs)] font-semibold text-slate-700 flex items-center gap-1">
+                            Calculated Quantity
+                            <span className="text-red-500">*</span>
+                            <span className="inline-flex items-center gap-0.5 px-[var(--space-2)] py-px rounded-full bg-amber-100 text-amber-700 text-[var(--text-2xs)] font-bold uppercase tracking-wide ml-1 shadow-sm">
+                              <Calculator className="w-2.5 h-2.5" />
+                              Auto
+                            </span>
+                          </label>
+                          <input
+                            type="number"
+                            disabled
+                            value={usageDiff ?? 0}
+                            className={`${inputBase} bg-amber-50/60 border-amber-200 text-amber-800 font-semibold shadow-inner`}
+                          />
+                          {enhancedDynamicOptions?.availableBoqQty !== undefined && (
+                            <div className="flex items-center gap-[var(--space-2)] mt-[var(--space-1)] px-[var(--space-2)] py-[var(--space-1)] rounded-[var(--radius-md)] text-[var(--text-xs)] font-medium text-slate-700 bg-slate-50 border border-slate-200">
+                              Available Stock: {enhancedDynamicOptions.availableBoqQty} {enhancedDynamicOptions.boqUnit}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </React.Fragment>
+                  );
+                })}
               </div>
             </form>
           )}

@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import DashboardLayout from "@/layouts/DashboardLayout";
-import { CheckCircle, Loader2, AlertCircle, History } from "lucide-react";
+import { CheckCircle, Loader2, AlertCircle, History, ListFilter, X } from "lucide-react";
 import apiClient from "@/lib/axios";
 import { 
   GET_SUPERVISOR_HISTORY_ENTRIES_API
@@ -22,25 +22,128 @@ export default function SupervisorHistoryPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  const [selectedTemplateId, setSelectedTemplateId] = useState("");
-  const [selectedRole, setSelectedRole] = useState("all");
+  const [selectedTemplateId, setSelectedTemplateId] = useState("all");
+  const [selectedProject, setSelectedProject] = useState("all");
+  const [selectedSubDivision, setSelectedSubDivision] = useState("all");
+  const [selectedFeeder, setSelectedFeeder] = useState("all");
+  const [selectedLocation, setSelectedLocation] = useState("all");
 
-  const roles = Array.from(
-    new Set(entries.map(e => e.engineer_role).filter(Boolean))
-  );
-
-  const roleFilteredEntries = entries.filter(e => 
-    selectedRole === "all" || e.engineer_role === selectedRole
-  );
+  const baseEntries = entries.filter(e => e.engineer_role?.toLowerCase() === "senior site supervisor");
 
   const templates = Array.from(
-    new Map(roleFilteredEntries.map(e => [e.template_id, e.template_title])).entries()
+    new Map(baseEntries.map(e => [e.template_id, e.template_title])).entries()
   ).map(([id, title]) => ({ id, title }));
 
-  const filteredEntries = roleFilteredEntries.filter(e => {
-    if (selectedTemplateId && String(e.template_id) !== String(selectedTemplateId)) return false;
-    return true;
+  const normalizeString = (str) => {
+    if (!str) return '';
+    return str.toLowerCase().replace(/[^a-z0-9]/g, '');
+  };
+
+  const matchField = (key, keywords) => {
+    const k = normalizeString(key);
+    return keywords.some(kw => {
+      const normKw = normalizeString(kw);
+      return k.includes(normKw);
+    });
+  };
+
+  const isProjectField = (k) => matchField(k, ['project']);
+  const isSubDivisionField = (k) => matchField(k, ['subdivision']);
+  const isFeederField = (k) => matchField(k, ['feeder']);
+  const isLocationField = (k) => matchField(k, ['location']);
+
+  const templateFilteredEntries = baseEntries.filter(e => selectedTemplateId === "all" || String(e.template_id) === String(selectedTemplateId));
+
+  const uniqueProjects = Array.from(new Set(
+    templateFilteredEntries.flatMap(e => {
+      let pVal = e.project_name || null;
+      if (e.data) {
+        const key = Object.keys(e.data).find(k => isProjectField(k));
+        if (key && e.data[key]) pVal = e.data[key];
+      }
+      return pVal ? [String(pVal)] : [];
+    })
+  )).sort();
+
+  const projectFilteredEntries = templateFilteredEntries.filter(e => {
+    if (selectedProject === "all") return true;
+    let pVal = e.project_name || null;
+    if (e.data) {
+      const key = Object.keys(e.data).find(k => isProjectField(k));
+      if (key && e.data[key]) pVal = e.data[key];
+    }
+    return String(pVal) === selectedProject;
   });
+
+  const uniqueSubDivisions = Array.from(new Set(
+    projectFilteredEntries.flatMap(e => {
+      if (e.data) {
+        const key = Object.keys(e.data).find(k => isSubDivisionField(k));
+        if (key && e.data[key]) return [String(e.data[key])];
+      }
+      return [];
+    })
+  )).sort();
+
+  const subDivFilteredEntries = projectFilteredEntries.filter(e => {
+    if (selectedSubDivision === "all") return true;
+    let sVal = null;
+    if (e.data) {
+      const key = Object.keys(e.data).find(k => isSubDivisionField(k));
+      if (key && e.data[key]) sVal = e.data[key];
+    }
+    return String(sVal) === selectedSubDivision;
+  });
+
+  const uniqueFeeders = Array.from(new Set(
+    subDivFilteredEntries.flatMap(e => {
+      if (e.data) {
+        const key = Object.keys(e.data).find(k => isFeederField(k));
+        if (key && e.data[key]) return [String(e.data[key])];
+      }
+      return [];
+    })
+  )).sort();
+
+  const feederFilteredEntries = subDivFilteredEntries.filter(e => {
+    if (selectedFeeder === "all") return true;
+    let fVal = null;
+    if (e.data) {
+      const key = Object.keys(e.data).find(k => isFeederField(k));
+      if (key && e.data[key]) fVal = e.data[key];
+    }
+    return String(fVal) === selectedFeeder;
+  });
+
+  const uniqueLocations = Array.from(new Set(
+    feederFilteredEntries.flatMap(e => {
+      if (e.data) {
+        const key = Object.keys(e.data).find(k => isLocationField(k));
+        if (key && e.data[key]) return [String(e.data[key])];
+      }
+      return [];
+    })
+  )).sort();
+
+  const filteredEntries = feederFilteredEntries.filter(e => {
+    if (selectedLocation === "all") return true;
+    let lVal = null;
+    if (e.data) {
+      const key = Object.keys(e.data).find(k => isLocationField(k));
+      if (key && e.data[key]) lVal = e.data[key];
+    }
+    return String(lVal) === selectedLocation;
+  });
+
+  const knownSequence = [
+    "sub_division",
+    "feeder",
+    "location_from",
+    "location_to",
+    "reading_from",
+    "reading_to",
+    "total_cable"
+  ];
 
   const dynamicKeys = Array.from(
     new Set(
@@ -51,7 +154,14 @@ export default function SupervisorHistoryPage() {
         return acc;
       }, new Set())
     )
-  );
+  ).sort((a, b) => {
+    const idxA = knownSequence.indexOf(a.toLowerCase());
+    const idxB = knownSequence.indexOf(b.toLowerCase());
+    if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+    if (idxA !== -1) return -1;
+    if (idxB !== -1) return 1;
+    return 0;
+  });
 
 
 
@@ -95,37 +205,100 @@ export default function SupervisorHistoryPage() {
           </div>
         </div>
 
-        {/* Filters Section */}
-        <div className="bg-white p-[var(--card-padding)] rounded-[var(--radius-xl)] border border-[var(--color-layout-border)] shadow-sm flex flex-wrap gap-[var(--space-4)]">
-          <div className="flex-1 min-w-[200px]">
-            <label className="text-[var(--text-xs)] font-semibold text-slate-600 mb-[var(--space-1)] block">1. Filter by Role</label>
-            <select
-              value={selectedRole}
-              onChange={(e) => {
-                setSelectedRole(e.target.value);
-                setSelectedTemplateId(""); // reset template when role changes
-              }}
-              className="w-full h-[var(--input-height)] px-[var(--space-4)] rounded-[var(--radius-lg)] border border-[var(--color-secondary-border)] bg-white text-[var(--text-sm)] text-slate-800 focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-top)]/20 focus:border-[var(--color-primary-top)] transition-colors duration-150"
-            >
-              <option value="all">All Roles</option>
-              {roles.map(r => (
-                <option key={r} value={r}>{r}</option>
-              ))}
-            </select>
-          </div>
-          <div className="flex-1 min-w-[200px]">
-            <label className="text-[var(--text-xs)] font-semibold text-slate-600 mb-[var(--space-1)] block">2. Select Template <span className="text-red-500">*</span></label>
+        {/* Filters Row */}
+        <div className="flex flex-wrap items-center gap-[var(--space-3)]">
+          <div className="relative flex-1 min-w-[160px] max-w-[220px]">
+            <ListFilter className="absolute left-[var(--space-3)] top-1/2 -translate-y-1/2 text-slate-400 w-[var(--icon-md)] h-[var(--icon-md)] pointer-events-none" />
             <select
               value={selectedTemplateId}
-              onChange={(e) => setSelectedTemplateId(e.target.value)}
-              className="w-full h-[var(--input-height)] px-[var(--space-4)] rounded-[var(--radius-lg)] border border-[var(--color-secondary-border)] bg-white text-[var(--text-sm)] text-slate-800 focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-top)]/20 focus:border-[var(--color-primary-top)] transition-colors duration-150"
+              onChange={(e) => {
+                setSelectedTemplateId(e.target.value);
+                setSelectedProject("all");
+                setSelectedSubDivision("all");
+                setSelectedFeeder("all");
+                setSelectedLocation("all");
+              }}
+              className="w-full h-[var(--input-height)] pl-[calc(var(--space-3)*2+var(--icon-md))] pr-[var(--space-4)] rounded-[var(--radius-xl)] border border-[var(--color-secondary-border)] bg-white text-[var(--text-sm)] text-slate-800 focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-top)]/20 focus:border-[var(--color-primary-top)] transition-colors duration-150 appearance-none"
             >
-              <option value="">-- Choose a Template --</option>
+              <option value="all">All Templates</option>
               {templates.map(t => (
                 <option key={t.id} value={t.id}>{t.title} (ID: {t.id})</option>
               ))}
             </select>
           </div>
+
+          <div className="relative flex-1 min-w-[160px] max-w-[220px]">
+            <select
+              value={selectedProject}
+              onChange={(e) => {
+                setSelectedProject(e.target.value);
+                setSelectedSubDivision("all");
+                setSelectedFeeder("all");
+                setSelectedLocation("all");
+              }}
+              className="w-full h-[var(--input-height)] px-[var(--space-4)] rounded-[var(--radius-xl)] border border-[var(--color-secondary-border)] bg-white text-[var(--text-sm)] text-slate-800 focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-top)]/20 focus:border-[var(--color-primary-top)] transition-colors duration-150 appearance-none"
+            >
+              <option value="all">All Projects</option>
+              {uniqueProjects.map(p => <option key={p} value={p}>{p}</option>)}
+            </select>
+          </div>
+
+          <div className="relative flex-1 min-w-[160px] max-w-[220px]">
+            <select
+              value={selectedSubDivision}
+              onChange={(e) => {
+                setSelectedSubDivision(e.target.value);
+                setSelectedFeeder("all");
+                setSelectedLocation("all");
+              }}
+              className="w-full h-[var(--input-height)] px-[var(--space-4)] rounded-[var(--radius-xl)] border border-[var(--color-secondary-border)] bg-white text-[var(--text-sm)] text-slate-800 focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-top)]/20 focus:border-[var(--color-primary-top)] transition-colors duration-150 appearance-none"
+            >
+              <option value="all">All Sub Divisions</option>
+              {uniqueSubDivisions.map(s => <option key={s} value={s}>{s}</option>)}
+            </select>
+          </div>
+
+          <div className="relative flex-1 min-w-[160px] max-w-[220px]">
+            <select
+              value={selectedFeeder}
+              onChange={(e) => {
+                setSelectedFeeder(e.target.value);
+                setSelectedLocation("all");
+              }}
+              className="w-full h-[var(--input-height)] px-[var(--space-4)] rounded-[var(--radius-xl)] border border-[var(--color-secondary-border)] bg-white text-[var(--text-sm)] text-slate-800 focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-top)]/20 focus:border-[var(--color-primary-top)] transition-colors duration-150 appearance-none"
+            >
+              <option value="all">All Feeders</option>
+              {uniqueFeeders.map(f => <option key={f} value={f}>{f}</option>)}
+            </select>
+          </div>
+
+          <div className="relative flex-1 min-w-[160px] max-w-[220px]">
+            <select
+              value={selectedLocation}
+              onChange={(e) => setSelectedLocation(e.target.value)}
+              className="w-full h-[var(--input-height)] px-[var(--space-4)] rounded-[var(--radius-xl)] border border-[var(--color-secondary-border)] bg-white text-[var(--text-sm)] text-slate-800 focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-top)]/20 focus:border-[var(--color-primary-top)] transition-colors duration-150 appearance-none"
+            >
+              <option value="all">All Locations</option>
+              {uniqueLocations.map(l => <option key={l} value={l}>{l}</option>)}
+            </select>
+          </div>
+
+          {(selectedTemplateId !== "all" || selectedProject !== "all" || selectedSubDivision !== "all" || selectedFeeder !== "all" || selectedLocation !== "all") && (
+            <button
+              onClick={() => {
+                setSelectedTemplateId("all");
+                setSelectedProject("all");
+                setSelectedSubDivision("all");
+                setSelectedFeeder("all");
+                setSelectedLocation("all");
+              }}
+              className="h-[var(--input-height)] px-[var(--space-4)] rounded-[var(--radius-xl)] bg-red-50 text-red-600 hover:bg-red-100 border border-red-200 transition-colors flex items-center gap-[var(--space-2)] text-[var(--text-xs)] font-bold shrink-0 shadow-sm"
+              title="Clear all filters"
+            >
+              <X className="w-[var(--icon-sm)] h-[var(--icon-sm)]" />
+              Clear
+            </button>
+          )}
         </div>
 
         {/* Loading and Error States */}
@@ -148,39 +321,42 @@ export default function SupervisorHistoryPage() {
           </div>
         )}
 
-        {/* Table / Empty State */}
-        {!loading && !error && !selectedTemplateId && (
-          <div className="flex flex-col items-center justify-center py-[var(--space-16)] bg-white rounded-[var(--radius-xl)] border border-[var(--color-layout-border)] shadow-sm">
-            <div className="w-16 h-16 rounded-full bg-slate-50 flex items-center justify-center text-slate-300 mb-[var(--space-4)]">
-              <History className="w-8 h-8" />
+        {!loading && !error && baseEntries.length === 0 && (
+          <div className="bg-white rounded-[var(--radius-xl)] border border-[var(--color-layout-border)] p-[var(--space-12)] flex flex-col items-center justify-center text-center shadow-sm">
+            <div className="w-[var(--space-12)] h-[var(--space-12)] rounded-full bg-slate-50 flex items-center justify-center mb-[var(--space-3)]">
+              <History className="w-[var(--icon-lg)] h-[var(--icon-lg)] text-slate-400" />
             </div>
-            <p className="text-[var(--text-base)] font-medium text-slate-600">Please select a Template to view history.</p>
+            <h3 className="text-[var(--text-base)] font-bold text-slate-800 mb-1">No History Available</h3>
+            <p className="text-[var(--text-sm)] text-slate-500">There are no history entries available for your role.</p>
           </div>
         )}
 
-        {!loading && !error && selectedTemplateId && (
+        {!loading && !error && baseEntries.length > 0 && (
           <div className="bg-white rounded-[var(--radius-xl)] border border-[var(--color-layout-border)] shadow-sm overflow-hidden flex flex-col min-w-0">
             <div className="overflow-x-auto scrollbar-thin scrollbar-thumb-slate-300 scrollbar-track-transparent">
               <table className="w-full min-w-[800px] border-collapse text-[var(--text-sm)]">
                 <thead>
                   <tr>
-                    <th className="sticky top-0 z-10 px-[var(--table-cell-px)] py-[var(--table-cell-py)] text-[var(--text-xs)] font-semibold text-slate-500 uppercase tracking-wider bg-slate-50/80 backdrop-blur-sm border-b border-[var(--color-layout-border)] whitespace-nowrap text-left">
-                      Template
-                    </th>
+                    {selectedTemplateId === "all" && (
+                      <th className="sticky top-0 z-10 px-[var(--table-cell-px)] py-[var(--table-cell-py)] text-[var(--text-xs)] font-semibold text-slate-500 uppercase tracking-wider bg-slate-50/80 backdrop-blur-sm border-b border-[var(--color-layout-border)] whitespace-nowrap text-left">
+                        Template
+                      </th>
+                    )}
                     <th className="sticky top-0 z-10 px-[var(--table-cell-px)] py-[var(--table-cell-py)] text-[var(--text-xs)] font-semibold text-slate-500 uppercase tracking-wider bg-slate-50/80 backdrop-blur-sm border-b border-[var(--color-layout-border)] whitespace-nowrap text-left">
                       Engineer
                     </th>
                     <th className="sticky top-0 z-10 px-[var(--table-cell-px)] py-[var(--table-cell-py)] text-[var(--text-xs)] font-semibold text-slate-500 uppercase tracking-wider bg-slate-50/80 backdrop-blur-sm border-b border-[var(--color-layout-border)] whitespace-nowrap text-left hidden md:table-cell">
                       Project
                     </th>
-                    <th className="sticky top-0 z-10 px-[var(--table-cell-px)] py-[var(--table-cell-py)] text-[var(--text-xs)] font-semibold text-slate-500 uppercase tracking-wider bg-slate-50/80 backdrop-blur-sm border-b border-[var(--color-layout-border)] whitespace-nowrap text-left">
-                      Date
-                    </th>
+
                     {dynamicKeys.map(key => (
                       <th key={key} className="sticky top-0 z-10 px-[var(--table-cell-px)] py-[var(--table-cell-py)] text-[var(--text-xs)] font-semibold text-slate-500 uppercase tracking-wider bg-slate-50/80 backdrop-blur-sm border-b border-[var(--color-layout-border)] whitespace-nowrap text-left">
                         {formatKey(key)}
                       </th>
                     ))}
+                    <th className="sticky top-0 z-10 px-[var(--table-cell-px)] py-[var(--table-cell-py)] text-[var(--text-xs)] font-semibold text-slate-500 uppercase tracking-wider bg-slate-50/80 backdrop-blur-sm border-b border-[var(--color-layout-border)] whitespace-nowrap text-left">
+                      Date
+                    </th>
                     <th className="sticky top-0 right-0 z-20 px-[var(--table-cell-px)] py-[var(--table-cell-py)] text-[var(--text-xs)] font-semibold text-slate-500 uppercase tracking-wider bg-slate-50/90 backdrop-blur-md border-b border-l border-[var(--color-layout-border)] whitespace-nowrap text-right shadow-[-4px_0_12px_rgba(0,0,0,0.02)]">
                       Status
                     </th>
@@ -189,7 +365,7 @@ export default function SupervisorHistoryPage() {
                 <tbody className="divide-y divide-[var(--color-layout-border)] bg-white">
                   {filteredEntries.length === 0 ? (
                     <tr>
-                      <td colSpan={5 + dynamicKeys.length} className="px-[var(--table-cell-px)] py-[var(--space-12)] text-center text-slate-500">
+                      <td colSpan={(selectedTemplateId === "all" ? 5 : 4) + dynamicKeys.length} className="px-[var(--table-cell-px)] py-[var(--space-12)] text-center text-slate-500">
                         <div className="flex flex-col items-center justify-center">
                           <div className="w-[var(--space-12)] h-[var(--space-12)] rounded-full bg-slate-50 flex items-center justify-center mb-[var(--space-3)]">
                             <CheckCircle className="w-[var(--icon-lg)] h-[var(--icon-lg)] text-slate-400" />
@@ -201,9 +377,11 @@ export default function SupervisorHistoryPage() {
                   ) : (
                     filteredEntries.map((entry) => (
                       <tr key={entry.entry_id} className="hover:bg-slate-50/60 transition-colors">
-                        <td className="px-[var(--table-cell-px)] py-[var(--table-cell-py)] whitespace-nowrap text-slate-600 font-medium">
-                          {entry.template_title}
-                        </td>
+                        {selectedTemplateId === "all" && (
+                          <td className="px-[var(--table-cell-px)] py-[var(--table-cell-py)] whitespace-nowrap text-slate-600 font-medium">
+                            {entry.template_title}
+                          </td>
+                        )}
                         <td className="px-[var(--table-cell-px)] py-[var(--table-cell-py)] whitespace-nowrap">
                           <div className="flex flex-col">
                             <span className="text-slate-800 font-medium">{entry.engineer_name}</span>
@@ -213,11 +391,7 @@ export default function SupervisorHistoryPage() {
                         <td className="px-[var(--table-cell-px)] py-[var(--table-cell-py)] whitespace-nowrap text-slate-600 hidden md:table-cell">
                           <span className="truncate block max-w-[150px]" title={entry.project_name}>{entry.project_name}</span>
                         </td>
-                        <td className="px-[var(--table-cell-px)] py-[var(--table-cell-py)] whitespace-nowrap text-slate-600">
-                          {new Date(entry.recorded_at).toLocaleDateString('en-IN', {
-                            day: '2-digit', month: 'short', year: 'numeric'
-                          })}
-                        </td>
+
                         {dynamicKeys.map(key => (
                           <td key={key} className="px-[var(--table-cell-px)] py-[var(--table-cell-py)] whitespace-nowrap text-slate-600">
                             {entry.data && entry.data[key] !== null && entry.data[key] !== undefined && entry.data[key] !== "" 
@@ -225,6 +399,11 @@ export default function SupervisorHistoryPage() {
                               : "-"}
                           </td>
                         ))}
+                        <td className="px-[var(--table-cell-px)] py-[var(--table-cell-py)] whitespace-nowrap text-slate-600">
+                          {new Date(entry.recorded_at).toLocaleDateString('en-IN', {
+                            day: '2-digit', month: 'short', year: 'numeric'
+                          })}
+                        </td>
                         <td className="sticky right-0 bg-white z-10 px-[var(--table-cell-px)] py-[var(--table-cell-py)] whitespace-nowrap text-right border-l border-[var(--color-layout-border)] shadow-[-4px_0_12px_rgba(0,0,0,0.02)] group-hover:bg-slate-50/60 transition-colors">
                           <span className={`inline-flex items-center px-[var(--space-3)] py-[var(--space-1)] rounded-[var(--radius-full)] text-[var(--text-2xs)] font-semibold uppercase tracking-wide ${
                             entry.status === 'approved' ? 'bg-green-100 text-green-700' :
